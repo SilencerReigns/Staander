@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Staander — MVP</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="nav">
+    <div class="logo">staander<span>.</span></div>
+    <button class="ghost" onclick="scrollToQuiz()">Descobrir solução</button>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow">STAANDER • MVP</span>
+        <h1>Encontre o que faz sentido para <span>você.</span></h1>
+        <p>Em vez de procurar entre dezenas de opções, responda algumas perguntas e deixe o Staander encontrar o melhor caminho para você.</p>
+        <button class="primary" onclick="scrollToQuiz()">Começar agora <span>→</span></button>
+        <div class="proof">
+          <div class="avatars"><i></i><i></i><i></i></div>
+          <small>Experiência rápida • personalizada • sem complicação</small>
+        </div>
+      </div>
+      <div class="hero-card">
+        <div class="card-top">Como funciona</div>
+        <div class="step"><b>01</b><span>Você responde algumas perguntas</span></div>
+        <div class="step"><b>02</b><span>O Staander entende seu perfil</span></div>
+        <div class="step"><b>03</b><span>Você recebe uma recomendação</span></div>
+      </div>
+    </section>
+
+    <section id="quiz" class="quiz-section">
+      <div class="quiz-shell">
+        <div class="progress"><span id="progressBar"></span></div>
+        <div class="quiz-meta"><span id="questionCount">1 de 4</span><span>Quiz Staander</span></div>
+
+        <div id="quizContent"></div>
+
+        <div class="quiz-actions">
+          <button id="backBtn" class="ghost" onclick="previousQuestion()" disabled>← Voltar</button>
+          <button id="nextBtn" class="primary" onclick="nextQuestion()">Continuar →</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="result" class="result-section hidden">
+      <div class="result-card">
+        <span class="eyebrow">SEU RESULTADO</span>
+        <h2 id="resultTitle"></h2>
+        <p id="resultText"></p>
+        <div id="resultItems" class="result-items"></div>
+        <button class="primary" onclick="resetQuiz()">Refazer o quiz</button>
+      </div>
+    </section>
+  </main>
+
+  <footer>© 2026 Staander. MVP demonstrativo.</footer>
+  <script src="app.js"></script>
+</body>
+</html>
