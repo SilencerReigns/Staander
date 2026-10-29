@@ -1,0 +1,9 @@
+# Dependências instaladas localmente
+node_modules/
+
+# Saída de builds e cache do Vite
+dist/
+.vite/
+
+# Arquivos gerados pelo TypeScript
+*.tsbuildinfo

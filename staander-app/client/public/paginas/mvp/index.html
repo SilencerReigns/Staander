@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Staander — Prototype</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">staander<span>.</span></div>
+    <div class="workspace">PERSONAL WORKSPACE <b>⌄</b></div>
+    <nav>
+      <button class="nav active" data-page="home">⌂ <span>Visão geral</span></button>
+      <button class="nav" data-page="library">▤ <span>Biblioteca</span></button>
+      <button class="nav" data-page="reader">◫ <span>Leitor</span></button>
+      <button class="nav" data-page="search">⌕ <span>Busca</span></button>
+      <button class="nav" data-page="notes">✎ <span>Notas & destaques</span></button>
+      <button class="nav" data-page="knowledge">◇ <span>Conhecimento</span></button>
+      <div class="divider"></div>
+      <div class="section-label">STUDIO</div>
+      <button class="nav" data-page="studio">▦ <span>Projetos</span></button>
+      <button class="nav" data-page="publish">↗ <span>Publish</span></button>
+    </nav>
+    <div class="sidebar-bottom">
+      <button class="nav" data-page="settings">⚙ <span>Configurações</span></button>
+      <div class="profile"><div class="avatar">ET</div><div><b>Meu espaço</b><small>Plano gratuito</small></div></div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
+      <div class="global-search" onclick="openPage('search')">⌕ <span>Buscar na sua biblioteca...</span><kbd>Ctrl K</kbd></div>
+      <div class="top-actions"><button title="Notificações">♢</button><button class="avatar small">ET</button></div>
+    </header>
+
+    <section id="home" class="page active">
+      <div class="page-head"><div><p class="kicker">VISÃO GERAL</p><h1>Bom te ver novamente.</h1><p class="muted">Continue de onde parou ou explore sua biblioteca.</p></div><button class="primary" onclick="openImport()">＋ Importar arquivo</button></div>
+      <div class="stats">
+        <div class="stat"><span>Biblioteca</span><strong id="bookCount">24</strong><small>arquivos</small></div>
+        <div class="stat"><span>Em andamento</span><strong>4</strong><small>leituras</small></div>
+        <div class="stat"><span>Progresso total</span><strong>68%</strong><small>neste mês</small></div>
+        <div class="stat"><span>Notas</span><strong id="noteCount">37</strong><small>anotações</small></div>
+      </div>
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-head"><h2>Continue lendo</h2><button class="link" onclick="openPage('library')">Ver tudo →</button></div>
+          <div class="reading-card" onclick="openReader('The Art of Strategy')">
+            <div class="cover cover1">THE<br>ART OF<br>STRATEGY</div><div class="reading-info"><h3>The Art of Strategy</h3><p class="muted">Avançando para o capítulo 6</p><div class="bar"><i style="width:62%"></i></div><small>62% · 128 / 206 páginas</small></div><b class="play">▶</b>
+          </div>
+          <div class="reading-card" onclick="openReader('Designing Data-Intensive Applications')">
+            <div class="cover cover2">DDIA</div><div class="reading-info"><h3>Designing Data-Intensive Applications</h3><p class="muted">Capítulo 3</p><div class="bar"><i style="width:31%"></i></div><small>31% · 142 / 452 páginas</small></div><b class="play">▶</b>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h2>Atividade recente</h2><button class="link" onclick="openPage('notes')">Ver notas →</button></div>
+          <div class="activity"><span class="dot purple"></span><div><b>Você destacou uma passagem</b><p>Atomic Habits · Cap. 2</p><small>há 18 min</small></div></div>
+          <div class="activity"><span class="dot"></span><div><b>Nova nota criada</b><p>“Ideia para o projeto Staander”</p><small>há 2 h</small></div></div>
+          <div class="activity"><span class="dot green"></span><div><b>Arquivo importado</b><p>Good Strategy Bad Strategy.pdf</p><small>ontem</small></div></div>
+          <div class="activity"><span class="dot orange"></span><div><b>Projeto atualizado</b><p>Research — Inteligência Competitiva</p><small>ontem</small></div></div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h2>Biblioteca recente</h2><button class="link" onclick="openPage('library')">Abrir biblioteca →</button></div>
+        <div id="recentGrid" class="book-grid"></div>
+      </div>
+    </section>
+
+    <section id="library" class="page">
+      <div class="page-head"><div><p class="kicker">BIBLIOTECA</p><h1>Seu acervo.</h1><p class="muted">Arquivos, e-books e documentos em um só lugar.</p></div><button class="primary" onclick="openImport()">＋ Importar</button></div>
+      <div class="library-tools"><div class="tabs"><button class="tab active">Todos</button><button class="tab">Lendo</button><button class="tab">Concluídos</button><button class="tab">Favoritos</button></div><input id="libraryFilter" placeholder="Filtrar biblioteca..." oninput="renderLibrary()"></div>
+      <div id="libraryGrid" class="book-grid large"></div>
+    </section>
+
+    <section id="reader" class="page reader-page">
+      <div class="reader-toolbar"><button class="ghost" onclick="openPage('library')">← Biblioteca</button><span id="readerTitle">The Art of Strategy</span><div><button onclick="togglePanel('readerNotes')">☰</button><button onclick="alert('Marcado como favorito')">☆</button></div></div>
+      <div class="reader-body">
+        <article class="paper"><div class="paper-meta">CAPÍTULO 6 · 62% CONCLUÍDO</div><h1>The Art of Strategy</h1><h2>Thinking in systems</h2><p>Estratégias eficazes raramente dependem de uma única decisão. Elas surgem da compreensão das relações entre escolhas, incentivos e consequências.</p><p>Ao analisar um problema, procure primeiro identificar as variáveis que realmente mudam o resultado. Depois, considere como cada movimento altera as possibilidades do próximo.</p><blockquote>Uma boa estratégia transforma complexidade em escolhas compreensíveis.</blockquote><p>O objetivo não é prever cada detalhe, mas construir um modelo que permita tomar decisões melhores conforme novas informações aparecem.</p><p>Essa forma de pensar também muda a maneira como pesquisamos. Em vez de acumular documentos, podemos conectar evidências, registrar hipóteses e retornar às fontes quando uma nova pergunta surgir.</p><p>Continue lendo para explorar os princípios e exemplos apresentados neste capítulo.</p></article>
+        <aside id="readerNotes" class="reader-notes"><h3>Notas desta página</h3><button class="note-add" onclick="addNote()">＋ Nova nota</button><div class="mini-note"><b>Insight</b><p>Relacionar isso ao módulo de inteligência competitiva.</p></div><div class="mini-note"><b>Trecho destacado</b><p>“...construir um modelo que permita tomar decisões melhores...”</p></div></aside>
+      </div>
+      <div class="reader-bottom"><span>128 / 206</span><div class="reader-progress"><i style="width:62%"></i></div><span>62%</span></div>
+    </section>
+
+    <section id="search" class="page">
+      <div class="page-head"><div><p class="kicker">BUSCA</p><h1>Encontre qualquer coisa.</h1><p class="muted">A busca percorre títulos, arquivos, notas e conteúdo.</p></div></div>
+      <div class="big-search">⌕ <input id="searchInput" autofocus placeholder="Ex.: estratégia, marketing, inteligência..." oninput="runSearch()"></div>
+      <div id="searchResults" class="search-results"></div>
+    </section>
+
+    <section id="notes" class="page">
+      <div class="page-head"><div><p class="kicker">NOTAS & DESTAQUES</p><h1>Seu conhecimento, organizado.</h1><p class="muted">Tudo que você marcou enquanto estudava ou pesquisava.</p></div><button class="primary" onclick="addNote()">＋ Nova nota</button></div>
+      <div class="note-layout"><div class="panel"><div class="panel-head"><h2>Notas recentes</h2><select><option>Todas</option><option>Favoritas</option></select></div><div id="notesList"></div></div><div class="panel note-side"><h2>Tags</h2><div class="chips"><button>#estratégia</button><button>#negócios</button><button>#produto</button><button>#ideias</button><button>#pesquisa</button></div><h2>Fontes</h2><p class="muted">12 documentos relacionados</p></div></div>
+    </section>
+
+    <section id="knowledge" class="page">
+      <div class="page-head"><div><p class="kicker">CAMADA DE CONHECIMENTO</p><h1>Conecte as ideias.</h1><p class="muted">Transforme documentos e notas em um espaço de conhecimento navegável.</p></div><button class="primary" onclick="alert('No MVP: criar conexão entre conceitos')">＋ Nova conexão</button></div>
+      <div class="knowledge-map"><div class="node n1">Staander</div><div class="node n2">Inteligência<br>competitiva</div><div class="node n3">Pesquisa</div><div class="node n4">Produtos</div><div class="node n5">Estratégia</div><div class="line l1"></div><div class="line l2"></div><div class="line l3"></div><div class="line l4"></div></div>
+      <div class="grid two"><div class="panel"><h2>Conceitos relacionados</h2><div class="relation"><b>Inteligência competitiva</b><span>8 fontes · 14 notas</span></div><div class="relation"><b>Pesquisa de mercado</b><span>5 fontes · 9 notas</span></div><div class="relation"><b>Product discovery</b><span>7 fontes · 11 notas</span></div></div><div class="panel"><h2>Busca inteligente</h2><p class="muted">Pergunte usando linguagem natural e encontre evidências espalhadas pelo acervo.</p><div class="ai-box">⌕ <span>“O que meus documentos dizem sobre diferenciação?”</span><button onclick="alert('MVP: consulta inteligente simulada')">Perguntar</button></div></div></div>
+    </section>
+
+    <section id="studio" class="page">
+      <div class="page-head"><div><p class="kicker">STUDIO</p><h1>Crie a partir do seu acervo.</h1><p class="muted">Organize produtos, materiais e projetos sem perder contexto.</p></div><button class="primary" onclick="newProject()">＋ Novo projeto</button></div>
+      <div class="studio-tabs"><button class="tab active">Projetos</button><button class="tab">Produtos</button><button class="tab">Arquivos</button><button class="tab">Referências</button></div>
+      <div class="project-grid">
+        <div class="project-card" onclick="openProject('Research — Inteligência Competitiva')"><span class="project-icon">◈</span><h2>Research — Inteligência Competitiva</h2><p>Pesquisa, referências e materiais de análise.</p><div class="project-foot"><span>18 arquivos</span><span>Atualizado hoje</span></div></div>
+        <div class="project-card"><span class="project-icon">◆</span><h2>Produto — E-book Estratégia</h2><p>Arquivos, capa, bônus e versões do produto.</p><div class="project-foot"><span>9 arquivos</span><span>3 versões</span></div></div>
+        <div class="project-card"><span class="project-icon">◇</span><h2>Novo projeto</h2><p>Comece uma área de trabalho do zero.</p><div class="project-foot"><span>+</span><span>Criar</span></div></div>
+      </div>
+      <div class="panel"><div class="panel-head"><h2>Estrutura do produto</h2><span class="muted">Produto — E-book Estratégia</span></div><div class="asset-grid"><div><b>📄 Arquivo principal</b><span>ebook_estrategia.pdf</span></div><div><b>🎁 Bônus</b><span>checklist.pdf · planilha.xlsx</span></div><div><b>▣ Capas</b><span>capa_v1.png · capa_final.png</span></div><div><b>↻ Versões</b><span>v1.0 · v1.1 · final</span></div><div><b>⌕ Referências</b><span>14 fontes vinculadas</span></div></div></div>
+    </section>
+
+    <section id="publish" class="page">
+      <div class="page-head"><div><p class="kicker">PUBLISH</p><h1>Pronto para publicar.</h1><p class="muted">Empacote seu projeto e prepare uma experiência de entrega.</p></div><button class="primary" onclick="alert('Publicação criada em modo demonstração')">＋ Nova publicação</button></div>
+      <div class="publish-flow"><div class="publish-step active"><b>01</b><strong>Conteúdo</strong><span>Arquivos e versões</span></div><div class="publish-step"><b>02</b><strong>Experiência</strong><span>Página e entrega</span></div><div class="publish-step"><b>03</b><strong>Publicação</strong><span>Revisão e lançamento</span></div></div>
+      <div class="panel publish-panel"><div class="publish-preview"><div class="fake-cover">ESTRATÉGIA<br><small>Um guia prático</small></div></div><div class="publish-info"><p class="kicker">PUBLICAÇÃO RASCUNHO</p><h2>E-book Estratégia</h2><label>Título</label><input value="Estratégia: um guia prático"><label>Descrição</label><textarea>Um material organizado a partir do projeto, com conteúdo principal e materiais complementares.</textarea><label>Arquivos incluídos</label><div class="included">✓ ebook_estrategia.pdf &nbsp; ✓ checklist.pdf &nbsp; ✓ planilha.xlsx</div><button class="primary" onclick="alert('Rascunho salvo')">Salvar rascunho</button></div></div>
+    </section>
+
+    <section id="settings" class="page">
+      <div class="page-head"><div><p class="kicker">CONFIGURAÇÕES</p><h1>Seu Staander.</h1><p class="muted">Preferências e organização do workspace.</p></div></div>
+      <div class="panel settings"><label>Nome do workspace<input value="Meu espaço"></label><label>Tema<select><option>Escuro</option><option>Claro</option></select></label><label>Sincronização<div class="toggle on">● Ativa</div></label><label>Backup automático<div class="toggle on">● Ativo</div></label></div>
+    </section>
+  </main>
+</div>
+
+<div id="modal" class="modal hidden"><div class="modal-box"><button class="modal-close" onclick="closeModal()">×</button><h2>Importar arquivo</h2><p class="muted">No protótipo, selecione um arquivo para simular a importação.</p><div class="drop">Arraste um PDF, EPUB ou documento aqui<br><span>ou</span><button class="primary" onclick="simulateImport()">Escolher arquivo</button></div></div></div>
+<div id="toast" class="toast"></div>
+<script src="app.js"></script>
+</body>
+</html>

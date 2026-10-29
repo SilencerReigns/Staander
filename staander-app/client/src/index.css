@@ -1,0 +1,311 @@
+:root {
+  --bg: #08090c;
+  --surface: #111319;
+  --surface2: #181b23;
+  --text: #f4f5f7;
+  --muted: #969ba8;
+  --accent: #8b5cf6;
+  --accent2: #a78bfa;
+  --line: #272b36;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button {
+  font: inherit;
+  cursor: pointer;
+  border: 0;
+  background: transparent;
+  color: inherit;
+}
+
+.ghost {
+  background: transparent;
+  color: var(--text);
+  padding: 11px 17px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.primary {
+  background: var(--accent);
+  color: white;
+  padding: 14px 20px;
+  border-radius: 11px;
+  font-weight: 700;
+  box-shadow: 0 10px 30px rgba(139, 92, 246, 0.18);
+}
+
+.primary:hover {
+  filter: brightness(1.08);
+}
+
+.primary:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.nav {
+  height: 76px;
+  padding: 0 7%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.logo {
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -1px;
+}
+
+.logo span {
+  color: var(--accent2);
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 7% 40px;
+}
+
+.page-title {
+  font-size: 32px;
+  letter-spacing: -1px;
+  margin: 40px 0 24px;
+}
+
+.section-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 32px;
+  margin-bottom: 32px;
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 700px) {
+  .form-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+label {
+  display: block;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+input,
+select,
+textarea {
+  width: 100%;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px 14px;
+  color: var(--text);
+  font-size: 15px;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+  outline: 2px solid var(--accent);
+  border-color: transparent;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+th,
+td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid var(--line);
+}
+
+th {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+tr:hover td {
+  background: var(--surface2);
+}
+
+.badge {
+  display: inline-block;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  background: var(--surface2);
+  border: 1px solid var(--line);
+  color: var(--accent2);
+}
+
+.actions-cell {
+  display: flex;
+  gap: 8px;
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.btn-sm:hover {
+  border-color: var(--accent);
+}
+
+.btn-danger {
+  border-color: #4c1d1d;
+  color: #fca5a5;
+}
+
+.btn-danger:hover {
+  background: #4c1d1d;
+  color: white;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--muted);
+}
+
+.toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--accent);
+  color: var(--text);
+  padding: 12px 16px;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  font-size: 14px;
+  z-index: 50;
+  animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(120%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Navegação unificada para a landing page, o MVP, o protótipo e os CRUDs. */
+.staander-shell {
+  min-height: 100vh;
+  background: #08090c;
+}
+
+.app-header {
+  min-height: 76px;
+  padding: 10px clamp(18px, 5vw, 72px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(8, 9, 12, 0.97);
+}
+
+.app-brand {
+  color: #f4f5f7;
+  text-decoration: none;
+  font-size: 25px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  white-space: nowrap;
+}
+
+.app-brand span { color: #a78bfa; }
+
+.app-navigation {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.app-nav-link {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 13px;
+  color: #c4c6ce;
+  text-decoration: none;
+  border-radius: 10px;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.app-nav-link span { font-size: 13px; font-weight: 700; }
+.app-nav-link small { color: #858997; font-size: 10px; }
+.app-nav-link:hover, .app-nav-link.active { color: #fff; background: #181b23; }
+.app-nav-link.active { box-shadow: inset 0 -2px #a78bfa; }
+
+.app-content { min-height: calc(100vh - 76px); }
+.experience-frame { display: block; width: 100%; height: calc(100vh - 76px); min-height: 620px; border: 0; background: #08090c; }
+
+.crud-content { padding: 0 clamp(18px, 5vw, 72px) 48px; }
+.crud-workspace { max-width: 1200px; margin: 0 auto; }
+.crud-intro { padding: 36px 0 18px; }
+.crud-intro .kicker { margin: 0 0 10px; color: #a78bfa; font-size: 11px; font-weight: 800; letter-spacing: 1.5px; }
+.crud-intro h1 { margin: 0; font-size: clamp(28px, 4vw, 42px); letter-spacing: -1.5px; }
+.crud-intro > p:not(.kicker) { margin: 10px 0 18px; color: #969ba8; }
+.crud-jump-links { display: flex; flex-wrap: wrap; gap: 9px; }
+.crud-jump-links a { padding: 8px 13px; color: #ddd6fe; text-decoration: none; font-size: 13px; border: 1px solid #353142; border-radius: 999px; }
+.crud-jump-links a:hover { background: #1b1726; }
+.crud-section { scroll-margin-top: 18px; }
+.crud-section .section-card { margin-bottom: 20px; }
+.app-footer { padding: 26px 0; text-align: center; color: #777c88; font-size: 12px; border-top: 1px solid var(--line); }
+
+@media (max-width: 760px) {
+  .app-header { align-items: flex-start; flex-direction: column; gap: 10px; padding: 12px 16px 0; }
+  .app-navigation { width: 100%; overflow-x: auto; align-items: stretch; }
+  .app-nav-link { flex: 0 0 auto; padding: 9px 10px 11px; }
+  .app-nav-link small { display: none; }
+  .app-content { min-height: calc(100vh - 100px); }
+  .experience-frame { height: calc(100vh - 100px); min-height: 560px; }
+  .crud-content { padding: 0 14px 30px; }
+  .crud-intro { padding-top: 26px; }
+  .crud-section .section-card { padding: 20px 16px; overflow-x: auto; }
+}

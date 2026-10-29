@@ -1,0 +1,671 @@
+:root {
+    --bg: #08090d;
+    --p: #11141b;
+    --p2: #181b23;
+    --line: #292e39;
+    --txt: #f5f5f7;
+    --muted: #969daa;
+    --a: #8b5cf6;
+    --a2: #b197fc;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--txt);
+    font-family: Inter, system-ui, sans-serif;
+}
+
+header {
+    height: 76px;
+    padding: 0 6%;
+    display: flex;
+    align-items: center;
+    border-bottom: 1px solid #fff1;
+    position: sticky;
+    top: 0;
+    background: #08090de8;
+    backdrop-filter: blur(15px);
+    z-index: 5;
+}
+
+.logo {
+    font-size: 25px;
+    font-weight: 900;
+    letter-spacing: -1.5px;
+}
+
+.logo span,
+em {
+    color: var(--a2);
+    font-style: normal;
+}
+
+nav {
+    display: flex;
+    gap: 28px;
+    margin: auto;
+}
+
+nav a {
+    font-size: 11px;
+    color: #9298a5;
+    text-decoration: none;
+}
+
+button {
+    background: var(--a);
+    color: #fff;
+    border: 0;
+    border-radius: 8px;
+    padding: 12px 17px;
+    font-weight: 750;
+    cursor: pointer;
+}
+
+section {
+    max-width: 1120px;
+    margin: auto;
+    padding: 105px 30px;
+}
+
+small {
+    font-size: 9px;
+    letter-spacing: 2px;
+    color: var(--a2);
+    font-weight: 850;
+}
+
+h1 {
+    font-size: clamp(45px, 5.3vw, 72px);
+    line-height: 0.98;
+    letter-spacing: -4px;
+    margin: 20px 0 25px;
+}
+
+h2 {
+    font-size: clamp(34px, 4vw, 53px);
+    line-height: 1;
+    letter-spacing: -2.5px;
+    margin: 15px 0 28px;
+}
+
+h3 {
+    font-size: 17px;
+}
+
+p {
+    color: var(--muted);
+    font-size: 13px;
+    line-height: 1.7;
+}
+
+
+/* ========================= */
+/* HERO                      */
+/* ========================= */
+
+.hero {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 65px;
+    align-items: center;
+    padding-top: 110px;
+}
+
+.hero p {
+    font-size: 17px;
+    max-width: 600px;
+}
+
+
+/* ========================= */
+/* MOCKUP                    */
+/* ========================= */
+
+.mock {
+    background: #101219;
+    border: 1px solid #363b47;
+    border-radius: 13px;
+    overflow: hidden;
+    box-shadow: 0 35px 90px #000b;
+}
+
+.mockbar {
+    height: 35px;
+    padding: 9px 12px;
+    color: #666;
+    font-size: 8px;
+}
+
+.mockbar b {
+    margin-left: 35%;
+    color: #888;
+}
+
+.mockbody {
+    display: flex;
+    height: 340px;
+}
+
+.mockbody aside {
+    width: 100px;
+    background: #0c0e13;
+    border-right: 1px solid var(--line);
+    padding: 17px 10px;
+    font-size: 9px;
+    line-height: 2.6;
+    color: #858b98;
+}
+
+.mockbody aside:first-line {
+    color: #fff;
+}
+
+.mockbody article {
+    padding: 25px;
+    flex: 1;
+}
+
+.mockbody article h2 {
+    font-size: 19px;
+    letter-spacing: -1px;
+    margin: 7px 0 18px;
+}
+
+.stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 6px;
+}
+
+.stats b {
+    background: var(--p2);
+    padding: 12px;
+    font-size: 15px;
+}
+
+.stats small {
+    display: block;
+    font-size: 7px;
+    color: #777;
+    letter-spacing: 0;
+    margin-top: 4px;
+}
+
+.covers {
+    display: flex;
+    gap: 12px;
+    margin-top: 25px;
+}
+
+.covers i {
+    font-style: normal;
+    background: #382e4d;
+    width: 62px;
+    height: 88px;
+    display: grid;
+    place-items: center;
+    text-align: center;
+    font-size: 6px;
+    font-weight: 900;
+}
+
+.covers i:nth-child(2) {
+    background: #293b4b;
+}
+
+.covers i:nth-child(3) {
+    background: #4b362d;
+}
+
+
+/* ========================= */
+/* PROBLEMA                  */
+/* ========================= */
+
+.problem {
+    border-top: 1px solid var(--line);
+}
+
+
+/* ========================= */
+/* CARDS                     */
+/* ========================= */
+
+.cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-top: 40px;
+}
+
+.cards > div,
+.cards article,
+.steps > div,
+.social > div,
+.testimonials > div,
+.info {
+    background: var(--p);
+    border: 1px solid var(--line);
+    border-radius: 11px;
+    padding: 25px;
+}
+
+.cards b {
+    color: var(--a2);
+    font-size: 10px;
+}
+
+.cards p {
+    font-size: 11px;
+}
+
+
+/* ========================= */
+/* DARK SECTIONS             */
+/* ========================= */
+
+.dark {
+    max-width: none;
+    padding-left: max(30px, calc((100% - 1120px) / 2));
+    padding-right: max(30px, calc((100% - 1120px) / 2));
+    background: #0c0e13;
+}
+
+
+/* ========================= */
+/* STEPS                     */
+/* ========================= */
+
+.steps {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 15px;
+    margin-top: 45px;
+}
+
+.steps > div {
+    min-height: 175px;
+}
+
+.steps b {
+    color: var(--a2);
+    font-size: 10px;
+}
+
+
+/* ========================= */
+/* VÍDEOS                    */
+/* ========================= */
+
+.videos {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-top: 40px;
+}
+
+.videos > div {
+    aspect-ratio: 16 / 9;
+    border: 1px solid #454b59;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #101219;
+}
+
+.video-player video {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    background: #08090d;
+}
+
+/*.videos strong,
+.videos small {
+    display: block;
+    margin-top: 8px;
+    color: #ddd;
+    letter-spacing: 0;
+    font-size: 12px;
+}
+
+.videos small {
+    font-size: 9px;
+    color: #717986;
+}*/
+
+
+/* ========================= */
+/* MÉTRICAS / ESTUDOS CASO  */
+/* ========================= */
+
+.metric {
+    display: block;
+    border-top: 1px solid var(--line);
+    margin-top: 20px;
+    padding-top: 15px;
+    font-size: 25px;
+}
+
+.metric small {
+    display: block;
+    font-size: 9px;
+    letter-spacing: 0;
+    color: #777;
+}
+
+.cards article a {
+    display: block;
+    color: var(--a2);
+    font-size: 10px;
+    margin-top: 22px;
+}
+
+
+/* ========================= */
+/* OBSERVAÇÕES               */
+/* ========================= */
+
+.note {
+    text-align: center;
+    font-size: 9px;
+    color: #606773;
+}
+
+
+/* ========================= */
+/* INFOGRÁFICOS              */
+/* ========================= */
+
+.infographics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-top: 40px;
+}
+
+.info {
+    min-height: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    padding: 0;
+}
+
+.info img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.info b {
+    padding: 22px;
+    border-radius: 50px;
+    background: #241b37;
+}
+
+.info p {
+    width: 100%;
+    text-align: center;
+}
+
+.bars {
+    display: block;
+}
+
+.bars label {
+    display: block;
+    font-size: 10px;
+    color: #969daa;
+    margin: 18px 0;
+}
+
+.bars i {
+    display: block;
+    height: 7px;
+    background: var(--a);
+    margin-top: 7px;
+    border-radius: 5px;
+}
+
+
+/* ========================= */
+/* COMPARATIVO               */
+/* ========================= */
+
+.center {
+    text-align: center;
+}
+
+.table {
+    overflow: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    margin-top: 40px;
+}
+
+.table table {
+    width: 100%;
+    min-width: 680px;
+    border-collapse: collapse;
+    background: var(--p);
+    font-size: 11px;
+}
+
+.table th,
+.table td {
+    padding: 16px;
+    border-bottom: 1px solid var(--line);
+}
+
+.table th {
+    font-size: 9px;
+    color: #858c99;
+}
+
+.table th:first-child,
+.table td:first-child {
+    text-align: left;
+}
+
+.table td:not(:first-child) {
+    color: #777e8a;
+}
+
+.table td:nth-child(2) {
+    color: #63e6be;
+    font-weight: 900;
+}
+
+
+/* ========================= */
+/* SOCIAL MEDIA              */
+/* ========================= */
+
+.social,
+.testimonials {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 17px;
+    margin-top: 40px;
+}
+
+/*
+   Os posts possuem proporção 4:5.
+   Por isso removemos o antigo aspect-ratio: 1
+   que deixava os cards quadrados.
+*/
+
+.social > div {
+    padding: 15px;
+    overflow: hidden;
+}
+
+/* Imagens dos posts */
+
+.social img {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+/* Identificação do post */
+
+.social b {
+    display: block;
+    font-size: 8px;
+    color: #737a87;
+    margin-bottom: 10px;
+}
+
+
+/* ========================= */
+/* DEPOIMENTOS               */
+/* ========================= */
+
+.testimonials > div {
+    min-height: 165px;
+    text-align: left;
+    color: #fbbf24;
+}
+
+.testimonials p {
+    font-family: Georgia, serif;
+    color: #bbb;
+    font-size: 14px;
+}
+
+.testimonials b,
+.testimonials small {
+    display: block;
+    color: #ddd;
+    font-size: 10px;
+    letter-spacing: 0;
+}
+
+.testimonials small {
+    color: #69717e;
+    margin-top: 5px;
+}
+
+
+/* ========================= */
+/* CTA                       */
+/* ========================= */
+
+.cta {
+    margin: 40px 30px 90px;
+    max-width: 1120px;
+    text-align: center;
+    border: 1px solid #3b314e;
+    border-radius: 17px;
+    background: radial-gradient(
+        circle at top,
+        #2a1d43,
+        #11141b 50%
+    );
+}
+
+.cta h2 {
+    font-size: 55px;
+}
+
+.cta p {
+    max-width: 500px;
+    margin: 0 auto 25px;
+}
+
+
+/* ========================= */
+/* FOOTER                    */
+/* ========================= */
+
+footer {
+    border-top: 1px solid var(--line);
+    padding: 40px 7%;
+    display: flex;
+    gap: 30px;
+    align-items: center;
+}
+
+footer p {
+    margin: auto;
+    font-size: 10px;
+}
+
+
+/* ========================= */
+/* RESPONSIVIDADE - TABLET   */
+/* ========================= */
+
+@media (max-width: 850px) {
+
+    nav {
+        display: none;
+    }
+
+    .hero {
+        grid-template-columns: 1fr;
+    }
+
+    .mock {
+        display: none;
+    }
+
+    .cards,
+    .steps,
+    .social,
+    .testimonials,
+    .infographics,
+    .videos {
+        grid-template-columns: 1fr;
+    }
+
+    .cta h2 {
+        font-size: 40px;
+    }
+}
+
+
+/* ========================= */
+/* RESPONSIVIDADE - CELULAR  */
+/* ========================= */
+
+@media (max-width: 550px) {
+
+    header button {
+        margin-left: auto;
+        font-size: 10px;
+    }
+
+    .hero {
+        padding-top: 75px;
+    }
+
+    h1 {
+        letter-spacing: -2.5px;
+    }
+
+    .cards {
+        grid-template-columns: 1fr;
+    }
+
+    .social > div {
+        padding: 12px;
+    }
+}
