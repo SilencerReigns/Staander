@@ -4,7 +4,8 @@ Pré-requisitos:
     - API em http://localhost:5150
     - Frontend em http://localhost:5173
     - Google Chrome instalado
-    - python -m pip install selenium webdriver-manager
+    - python -m pip install selenium
+    - se o Selenium Manager não localizar o driver, definir CHROMEDRIVER
 
 Execução a partir da raiz do repositório:
     python -m unittest discover -s staander-app/tests -p test.py -v
@@ -19,8 +20,8 @@ from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.common.exceptions import StaleElementReferenceException
 from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
 
 
 BASE_URL = os.environ.get("STAANDER_BASE_URL", "http://localhost:5173")
@@ -37,8 +38,14 @@ class StaanderCRUDTests(unittest.TestCase):
         options.add_argument("--disable-gpu")
         options.add_argument("--window-size=1440,1000")
 
-        service = Service(ChromeDriverManager().install())
-        cls.driver = webdriver.Chrome(service=service, options=options)
+        driver_path = os.environ.get("CHROMEDRIVER")
+        if driver_path:
+            cls.driver = webdriver.Chrome(
+                service=Service(executable_path=driver_path), options=options
+            )
+        else:
+            # Selenium Manager encontra automaticamente um driver compatível.
+            cls.driver = webdriver.Chrome(options=options)
         cls.wait = WebDriverWait(cls.driver, WAIT_SECONDS)
 
     @classmethod
@@ -81,9 +88,15 @@ class StaanderCRUDTests(unittest.TestCase):
         self.fail(f"Não encontrei a linha '{text}' na seção #{section_id}.")
 
     def find_row(self, section_id, text):
-        for row in self.rows(section_id):
-            if text in row.text:
-                return row
+        # Reconsulta a tabela a cada tentativa: React substitui as linhas quando
+        # a lista muda e referências antigas podem ficar obsoletas.
+        for _ in range(3):
+            try:
+                for row in self.rows(section_id):
+                    if text in (row.get_attribute("innerText") or ""):
+                        return row
+            except StaleElementReferenceException:
+                continue
         return None
 
     def field(self, section, label, control="input"):
@@ -97,14 +110,21 @@ class StaanderCRUDTests(unittest.TestCase):
         section.find_element(By.CSS_SELECTOR, "form button[type='submit']").click()
 
     def wait_for_toast(self, section_id, expected_text):
-        self.wait.until(
-            lambda _driver: any(
-                toast.is_displayed() and expected_text in toast.text
-                for toast in self.section(section_id).find_elements(
-                    By.CSS_SELECTOR, ".toast"
-                )
-            )
-        )
+        def toast_result(_driver):
+            try:
+                messages = [
+                    toast.get_attribute("innerText")
+                    for toast in self.section(section_id).find_elements(
+                        By.CSS_SELECTOR, ".toast"
+                    )
+                ]
+            except StaleElementReferenceException:
+                return False
+            if any(message and message.startswith("Erro:") for message in messages):
+                raise AssertionError("A aplicação recusou a operação: " + " | ".join(messages))
+            return any(expected_text in (message or "") for message in messages)
+
+        self.wait.until(toast_result)
 
     def delete_row(self, section_id, row):
         row.find_element(By.XPATH, ".//button[contains(., 'Excluir')]").click()
@@ -265,7 +285,8 @@ class StaanderCRUDTests(unittest.TestCase):
                 self.delete_row("biblioteca", item_row)
                 self.wait.until(
                     lambda _driver: not any(
-                        item_title in row.text for row in self.rows("biblioteca")
+                        item_title in (row.get_attribute("innerText") or "")
+                        for row in self.rows("biblioteca")
                     )
                 )
 
