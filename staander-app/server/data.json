@@ -1,6 +1,7 @@
 {
   "items": [
     {
+<<<<<<< HEAD
       "id": "833bc5b1-f82b-4771-a81d-22c3174d51fd",
       "criadoEm": "2026-11-05T21:58:44.622Z",
       "titulo": "teste",
@@ -11,17 +12,31 @@
       "criadoEm": "2026-11-05T22:01:40.021Z",
       "titulo": "The Art of Strategy",
       "tamanho": "12"
+=======
+      "id": "0f8433c0-8fcb-48f2-93f5-667dfc51a1c7",
+      "criadoEm": "2026-10-29T21:36:50.299Z",
+      "titulo": "Item base Selenium 956d456a",
+      "tamanho": "4 MB",
+      "status": "em_leitura"
+>>>>>>> 57b2f41519e25130b3b1e06cbd37a4d583791e9d
     }
   ],
   "tags": [
     {
+<<<<<<< HEAD
       "id": "b8ef10be-92b4-43ef-8e5d-137c36074480",
       "criadoEm": "2026-11-05T21:58:52.297Z",
       "nome": "teste"
+=======
+      "id": "62650a72-dec7-4a00-9b37-786b79a11255",
+      "criadoEm": "2026-10-29T23:53:47.800Z",
+      "nome": "Algoritmos"
+>>>>>>> 57b2f41519e25130b3b1e06cbd37a4d583791e9d
     }
   ],
   "notes": [
     {
+<<<<<<< HEAD
       "id": "433781be-b82b-4832-ae1d-78af0def4d00",
       "criadoEm": "2026-11-05T21:59:04.049Z",
       "itemId": "833bc5b1-f82b-4771-a81d-22c3174d51fd",
@@ -34,6 +49,13 @@
       "itemId": "5fe030b8-7b39-43a9-bc11-637e9b492e87",
       "conteudo": "teste n",
       "posicao": "1"
+=======
+      "id": "08fc594c-3559-40dc-985d-9e72a9b342e5",
+      "criadoEm": "2026-10-29T23:52:12.476Z",
+      "itemId": "0f8433c0-8fcb-48f2-93f5-667dfc51a1c7",
+      "conteudo": "Nota teste",
+      "posicao": "página 2"
+>>>>>>> 57b2f41519e25130b3b1e06cbd37a4d583791e9d
     }
   ]
 }
