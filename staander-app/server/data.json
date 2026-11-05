@@ -1,5 +1,27 @@
 {
-  "items": [],
-  "tags": [],
-  "notes": []
+  "items": [
+    {
+      "id": "0f8433c0-8fcb-48f2-93f5-667dfc51a1c7",
+      "criadoEm": "2026-10-29T21:36:50.299Z",
+      "titulo": "Item base Selenium 956d456a",
+      "tamanho": "4 MB",
+      "status": "em_leitura"
+    }
+  ],
+  "tags": [
+    {
+      "id": "62650a72-dec7-4a00-9b37-786b79a11255",
+      "criadoEm": "2026-10-29T23:53:47.800Z",
+      "nome": "Algoritmos"
+    }
+  ],
+  "notes": [
+    {
+      "id": "08fc594c-3559-40dc-985d-9e72a9b342e5",
+      "criadoEm": "2026-10-29T23:52:12.476Z",
+      "itemId": "0f8433c0-8fcb-48f2-93f5-667dfc51a1c7",
+      "conteudo": "Nota teste",
+      "posicao": "página 2"
+    }
+  ]
 }
