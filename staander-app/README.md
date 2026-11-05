@@ -32,3 +32,5 @@ npm run dev
 Abra o endereço informado pelo Vite (por padrão, `http://localhost:5173`). A API usa `http://localhost:5150` e guarda os registros em `server/data.json`.
 
 As páginas estáticas originais foram mantidas em `client/public/paginas` para serem servidas junto do aplicativo.
+
+As notas cadastradas em **Aplicação → Notas** aparecem na lateral do leitor do MVP quando estão vinculadas a um item cujo título corresponde ao e-book aberto.

@@ -17,6 +17,7 @@ const notes=[
 ["Produto","O Studio pode organizar arquivos, versões, bônus e referências por produto.","Staander","há 3 dias"],
 ["Leitura","Voltar às fontes originais quando uma nova pergunta surgir.","Atomic Habits","há 4 dias"]
 ];
+let readerNotesRequest=0;
 
 function openPage(id){
  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
@@ -43,7 +44,56 @@ function runSearch(){
  const results=q?books.filter(b=>b.join(" ").toLowerCase().includes(q)).slice(0,6):books.slice(0,4);
  document.getElementById("searchResults").innerHTML=results.map(b=>`<div class="search-result"><b>${b[0]}</b><p>${b[1]} · ${b[2]} · Resultado em título e metadados</p></div>`).join("");
 }
-function openReader(title){document.getElementById("readerTitle").textContent=title;openPage("reader")}
+function openReader(title){
+ document.getElementById("readerTitle").textContent=title;
+ openPage("reader");
+ renderReaderNotes(title);
+}
+async function renderReaderNotes(title){
+ const container=document.getElementById("readerNotesList");
+ const requestId=++readerNotesRequest;
+ container.replaceChildren();
+ showReaderNotesMessage(container,"Carregando notas...");
+ try{
+  const responses=await Promise.all([fetch("/api/items"),fetch("/api/notes")]);
+  if(responses.some(response=>!response.ok))throw new Error("A API retornou um erro.");
+  const [items,allNotes]=await Promise.all(responses.map(response=>response.json()));
+  if(requestId!==readerNotesRequest)return;
+  const item=items.find(book=>book.titulo.trim().toLocaleLowerCase()===title.trim().toLocaleLowerCase());
+  if(!item){
+   showReaderNotesMessage(container,"Este e-book ainda não está cadastrado na biblioteca da aplicação. Cadastre-o e vincule notas para vê-las aqui.");
+   return;
+  }
+  const relatedNotes=allNotes.filter(note=>note.itemId===item.id);
+  if(relatedNotes.length===0){
+   showReaderNotesMessage(container,"Nenhuma nota vinculada a este e-book.");
+   return;
+  }
+  container.replaceChildren(...relatedNotes.map(createReaderNote));
+ }catch(error){
+  if(requestId!==readerNotesRequest)return;
+  console.error("Não foi possível carregar as notas do e-book:",error);
+  showReaderNotesMessage(container,"Não foi possível carregar as notas. Verifique se a API está em execução.");
+ }
+}
+function showReaderNotesMessage(container,message){
+ const paragraph=document.createElement("p");
+ paragraph.className="muted";
+ paragraph.textContent=message;
+ container.replaceChildren(paragraph);
+}
+function createReaderNote(note){
+ const card=document.createElement("div");
+ card.className="mini-note";
+ const heading=document.createElement("b");
+ heading.textContent=note.posicao||"Nota";
+ const content=document.createElement("p");
+ content.textContent=note.conteudo;
+ const date=document.createElement("small");
+ date.textContent=new Date(note.criadoEm).toLocaleDateString("pt-BR");
+ card.append(heading,content,date);
+ return card;
+}
 function togglePanel(id){document.getElementById(id).style.display=document.getElementById(id).style.display==="none"?"block":"none"}
 function openImport(){document.getElementById("modal").classList.remove("hidden")}
 function closeModal(){document.getElementById("modal").classList.add("hidden")}

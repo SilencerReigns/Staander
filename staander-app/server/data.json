@@ -1,5 +1,39 @@
 {
-  "items": [],
-  "tags": [],
-  "notes": []
+  "items": [
+    {
+      "id": "833bc5b1-f82b-4771-a81d-22c3174d51fd",
+      "criadoEm": "2026-11-05T21:58:44.622Z",
+      "titulo": "teste",
+      "tamanho": "12"
+    },
+    {
+      "id": "5fe030b8-7b39-43a9-bc11-637e9b492e87",
+      "criadoEm": "2026-11-05T22:01:40.021Z",
+      "titulo": "The Art of Strategy",
+      "tamanho": "12"
+    }
+  ],
+  "tags": [
+    {
+      "id": "b8ef10be-92b4-43ef-8e5d-137c36074480",
+      "criadoEm": "2026-11-05T21:58:52.297Z",
+      "nome": "teste"
+    }
+  ],
+  "notes": [
+    {
+      "id": "433781be-b82b-4832-ae1d-78af0def4d00",
+      "criadoEm": "2026-11-05T21:59:04.049Z",
+      "itemId": "833bc5b1-f82b-4771-a81d-22c3174d51fd",
+      "conteudo": "teste nota",
+      "posicao": "1"
+    },
+    {
+      "id": "5d2e64c1-9e4b-4306-ab36-c4931ab4d567",
+      "criadoEm": "2026-11-05T22:01:50.391Z",
+      "itemId": "5fe030b8-7b39-43a9-bc11-637e9b492e87",
+      "conteudo": "teste n",
+      "posicao": "1"
+    }
+  ]
 }
