@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { api, type Item } from './api';
 
 export function ItemCrud() {
@@ -7,10 +7,36 @@ export function ItemCrud() {
   const [editing, setEditing] = useState<string | null>(null);
   const [draft, setDraft] = useState<Partial<Item>>({});
   const [toast, setToast] = useState('');
+  const [importing, setImporting] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     api.listItems().then(setItems).finally(() => setLoading(false));
   }, []);
+
+  function handleImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = ''; // permite escolher o mesmo arquivo de novo
+    if (files.length === 0) return;
+    setImporting(true);
+    api.importItems(files)
+      .then(async ({ importados, rejeitados }) => {
+        const partes: string[] = [];
+        if (importados.length > 0) {
+          partes.push(importados.length === 1 ? '1 PDF importado' : `${importados.length} PDFs importados`);
+        }
+        if (rejeitados.length > 0) {
+          partes.push(`Não importado: ${rejeitados.map((r) => `${r.nome} (${r.motivo})`).join('; ')}`);
+        }
+        setToast(partes.join('. '));
+        setItems(await api.listItems());
+      })
+      .catch((err) => setToast('Erro: ' + err.message))
+      .finally(() => {
+        setImporting(false);
+        setTimeout(() => setToast(''), 7000);
+      });
+  }
 
   function handleSave(e: React.FormEvent) {
     e.preventDefault();
@@ -43,6 +69,23 @@ export function ItemCrud() {
         Arquivos importados (PDF, EPUB ou outros) com status de leitura.
       </p>
 
+      <div style={{ marginBottom: 20 }}>
+        <input
+          ref={fileInput}
+          type="file"
+          accept="application/pdf,.pdf"
+          multiple
+          hidden
+          onChange={handleImport}
+        />
+        <button type="button" className="primary" disabled={importing} onClick={() => fileInput.current?.click()}>
+          {importing ? 'Importando...' : 'Importar PDFs'}
+        </button>
+        <span style={{ color: '#969ba8', marginLeft: 12, fontSize: 13 }}>
+          Escolha PDFs do seu computador.
+        </span>
+      </div>
+
       {loading ? (
         <p style={{ color: '#969ba8' }}>Carregando itens...</p>
       ) : items.length === 0 ? (
@@ -66,8 +109,11 @@ export function ItemCrud() {
                 <td><span className="badge">{item.tipo}</span></td>
                 <td>{item.tamanho}</td>
                 <td>{item.status}</td>
-                <td>{new Date(item.dataImportacao).toLocaleDateString('pt-BR')}</td>
+                <td>{new Date(item.dataImportacao ?? item.criadoEm).toLocaleDateString('pt-BR')}</td>
                 <td className="actions-cell">
+                  {item.arquivo && (
+                    <a className="btn-sm" href={api.fileUrl(item.id)} target="_blank" rel="noreferrer">Abrir</a>
+                  )}
                   <button className="btn-sm" onClick={() => startEdit(item)}>Editar</button>
                   <button className="btn-sm btn-danger" onClick={() => deleteItem(item.id)}>Excluir</button>
                 </td>
