@@ -11,22 +11,25 @@ Show Chrome and slow interactions down:
     STAANDER_HEADLESS=0 STAANDER_ACTION_DELAY=0.6 python3 -m unittest discover -s staander-app/tests -p test.py -v
 """
 
+import json
 import os
 import tempfile
 import time
 import unittest
+import urllib.error
+import urllib.request
 import uuid
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
 
 
 BASE_URL = os.environ.get("STAANDER_BASE_URL", "http://localhost:5173")
+API_URL = os.environ.get("STAANDER_API_URL", "http://localhost:5150")
 WAIT_SECONDS = 5
 ACTION_DELAY = max(0.0, float(os.environ.get("STAANDER_ACTION_DELAY", "0")))
 HEADLESS = os.environ.get("STAANDER_HEADLESS", "1").strip().lower() not in (
@@ -163,31 +166,29 @@ class StaanderE2ETests(unittest.TestCase):
         )
 
     def api_request(self, method, path, body=None):
-        return self.driver.execute_async_script(
-            """
-            const done = arguments[0];
-            const method = arguments[1];
-            const path = arguments[2];
-            const body = arguments[3];
-            const options = {
-              method,
-              headers: {
-                Authorization: 'Bearer ' + localStorage.getItem('staander_token')
-              }
-            };
-            if (body !== null) {
-              options.headers['Content-Type'] = 'application/json';
-              options.body = JSON.stringify(body);
-            }
-            fetch(path, options).then(async response => {
-              const payload = await response.json().catch(() => null);
-              done({ status: response.status, body: payload });
-            }).catch(error => done({ status: 0, error: String(error) }));
-            """,
-            method,
-            path,
-            body,
+        token = self.driver.execute_script(
+            "return window.localStorage.getItem('staander_token');"
         )
+        headers = {"Authorization": "Bearer " + (token or "")}
+        data = None
+        if body is not None:
+            headers["Content-Type"] = "application/json"
+            data = json.dumps(body).encode("utf-8")
+
+        request = urllib.request.Request(
+            API_URL.rstrip("/") + path, data=data, headers=headers, method=method
+        )
+        try:
+            response = urllib.request.urlopen(request, timeout=10)
+        except urllib.error.HTTPError as error:
+            response = error
+
+        with response:
+            payload = response.read()
+            return {
+                "status": response.status,
+                "body": json.loads(payload) if payload else None,
+            }
 
     def open_page(self, page):
         self.click('.nav[data-page="{}"]'.format(page))
@@ -221,19 +222,18 @@ class StaanderE2ETests(unittest.TestCase):
         file_input.send_keys(file_path)
         self.pause()
 
-        card = self.wait.until(
-            lambda driver: next(
-                (
-                    item
-                    for item in driver.find_elements(
-                        By.CSS_SELECTOR, "#libraryGrid .book"
-                    )
-                    if item.get_attribute("data-title") == title
-                ),
-                False,
+        item_id = self.wait.until(
+            lambda driver: driver.execute_script(
+                """
+                const card = Array.from(
+                  document.querySelectorAll('#libraryGrid .book')
+                ).find(item => item.getAttribute('data-title') === arguments[0]);
+                return card && card.getAttribute('data-id');
+                """,
+                title,
             )
         )
-        return card.get_attribute("data-id"), file_path
+        return item_id, file_path
 
     def test_login_rejects_invalid_credentials(self):
         email = "missing-{}@example.test".format(uuid.uuid4().hex)
@@ -346,14 +346,12 @@ class StaanderE2ETests(unittest.TestCase):
                 200,
             )
 
-            card = self.driver.find_element(
-                By.CSS_SELECTOR, '.book[data-id="{}"]'.format(item_id)
+            delete_button = self.wait.until(
+                lambda driver: driver.find_element(
+                    By.CSS_SELECTOR, '.book[data-id="{}"] [data-delete]'.format(item_id)
+                )
             )
-            ActionChains(self.driver).move_to_element(card).perform()
-            self.pause()
-            self.click(
-                '.book[data-id="{}"] [data-delete]'.format(item_id)
-            )
+            self.driver.execute_script("arguments[0].click();", delete_button)
             self.confirm_delete()
             self.wait.until(
                 lambda driver: not driver.find_elements(
