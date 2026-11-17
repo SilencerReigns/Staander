@@ -189,6 +189,12 @@ tr:hover td {
   border-color: var(--accent);
 }
 
+a.btn-sm {
+  display: inline-block;
+  color: inherit;
+  text-decoration: none;
+}
+
 .btn-danger {
   border-color: #4c1d1d;
   color: #fca5a5;
@@ -283,7 +289,7 @@ tr:hover td {
 .app-nav-link.active { box-shadow: inset 0 -2px #a78bfa; }
 
 .app-content { min-height: calc(100vh - 76px); }
-.experience-frame { display: block; width: 100%; height: calc(100vh - 76px); min-height: 620px; border: 0; background: #08090c; }
+.experience-frame { display: block; width: 100%; height: 100vh; border: 0; background: #08090c; }
 
 .crud-content { padding: 0 clamp(18px, 5vw, 72px) 48px; }
 .crud-workspace { max-width: 1200px; margin: 0 auto; }
@@ -304,14 +310,10 @@ tr:hover td {
   .app-nav-link { flex: 0 0 auto; padding: 9px 10px 11px; }
   .app-nav-link small { display: none; }
   .app-content { min-height: calc(100vh - 100px); }
-  .experience-frame { height: calc(100vh - 100px); min-height: 560px; }
   .crud-content { padding: 0 14px 30px; }
   .crud-intro { padding-top: 26px; }
   .crud-section .section-card { padding: 20px 16px; overflow-x: auto; }
 }
-
-
-/* AUTENTICAÇÃO */
 
 .auth-screen {
   min-height: 100vh;
@@ -433,30 +435,3 @@ tr:hover td {
     padding: 30px 24px;
   }
 }
-
-/* SESSÃO DO USUÁRIO */
-
-.user-session {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-left: auto;
-  padding-left: 16px;
-  color: var(--muted);
-  font-size: 12px;
-}
-
-.user-session button {
-  padding: 7px 12px;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  background: var(--surface2);
-  color: var(--text);
-  cursor: pointer;
-}
-
-.user-session button:hover {
-  border-color: var(--accent);
-  color: var(--accent2);
-}
-

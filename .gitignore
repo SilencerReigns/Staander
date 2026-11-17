@@ -7,3 +7,6 @@ dist/
 
 # Arquivos gerados pelo TypeScript
 *.tsbuildinfo
+
+# PDFs importados pelos usuários
+staander-app/server/uploads/

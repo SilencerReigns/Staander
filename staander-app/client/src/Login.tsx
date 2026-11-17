@@ -1,4 +1,3 @@
-
 import { useState, type FormEvent } from 'react';
 import { api, type AuthUser } from './api';
 
@@ -20,18 +19,12 @@ export function Login({ onAuthenticated }: LoginProps) {
     setCarregando(true);
 
     try {
-      const resposta =
-        modo === 'login'
-          ? await api.login({ email, senha })
-          : await api.register({ nome, email, senha });
-
+      const resposta = modo === 'login'
+        ? await api.login({ email, senha })
+        : await api.register({ nome, email, senha });
       onAuthenticated(resposta.token, resposta.user);
     } catch (error) {
-      setMensagem(
-        error instanceof Error
-          ? error.message
-          : 'Não foi possível realizar a operação.'
-      );
+      setMensagem(error instanceof Error ? error.message : 'Não foi possível realizar a operação.');
     } finally {
       setCarregando(false);
     }
@@ -45,10 +38,7 @@ export function Login({ onAuthenticated }: LoginProps) {
   return (
     <main className="auth-screen">
       <section className="auth-card">
-        <h1 className="auth-brand">
-          staander<span>.</span>
-        </h1>
-
+        <h1 className="auth-brand">staander<span>.</span></h1>
         <p className="auth-subtitle">
           {modo === 'login'
             ? 'Entre na sua biblioteca de conhecimento.'
@@ -95,27 +85,14 @@ export function Login({ onAuthenticated }: LoginProps) {
             />
           </div>
 
-          <p className="auth-message" role="alert">
-            {mensagem}
-          </p>
-
-          <button
-            className="auth-submit"
-            type="submit"
-            disabled={carregando}
-          >
-            {carregando
-              ? 'Aguarde...'
-              : modo === 'login'
-                ? 'Entrar'
-                : 'Criar conta'}
+          <p className="auth-message" role="alert">{mensagem}</p>
+          <button className="auth-submit" type="submit" disabled={carregando}>
+            {carregando ? 'Aguarde...' : modo === 'login' ? 'Entrar' : 'Criar conta'}
           </button>
         </form>
 
         <p className="auth-switch">
-          {modo === 'login'
-            ? 'Ainda não tem uma conta?'
-            : 'Já possui uma conta?'}{' '}
+          {modo === 'login' ? 'Ainda não tem uma conta?' : 'Já possui uma conta?'}{' '}
           <button type="button" onClick={alternarModo}>
             {modo === 'login' ? 'Cadastre-se' : 'Faça login'}
           </button>

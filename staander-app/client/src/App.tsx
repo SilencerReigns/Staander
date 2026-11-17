@@ -1,49 +1,31 @@
-
+// Só o MVP é exibido: as demais páginas e a tela de CRUD não fazem mais parte da navegação.
 import { useEffect, useState } from 'react';
-import { ItemCrud } from './ItemCrud';
-import { TagCrud } from './TagCrud';
-import { NoteCrud } from './NoteCrud';
 import { Login } from './Login';
-import { api, type AuthUser } from './api';
-
-const TOKEN_KEY = 'staander_token';
-
-const pages = [
-  { id: 'landing', label: 'Landing page', description: 'Apresentação do Staander', src: '/paginas/landing/index.html' },
-  { id: 'mvp', label: 'MVP', description: 'Quiz e recomendação', src: '/paginas/mvp/index.html' },
-  { id: 'produto', label: 'Produto', description: 'Protótipo navegável', src: '/paginas/produto/index.html' },
-  { id: 'app', label: 'Aplicação', description: 'Biblioteca, tags e notas' },
-] as const;
-
-type PageId = (typeof pages)[number]['id'];
-
-function getPageFromHash(): PageId {
-  const id = window.location.hash.slice(1);
-  return pages.some((page) => page.id === id) ? (id as PageId) : 'landing';
-}
+import { api, TOKEN_KEY, USER_KEY, type AuthUser } from './api';
 
 export default function App() {
-  const [activePage, setActivePage] = useState<PageId>(getPageFromHash);
   const [usuario, setUsuario] = useState<AuthUser | null>(null);
   const [verificandoSessao, setVerificandoSessao] = useState(true);
 
-  // Verifica se já existe uma sessão salva
   useEffect(() => {
     const token = localStorage.getItem(TOKEN_KEY);
-
     if (!token) {
       setVerificandoSessao(false);
       return;
     }
 
     let ativo = true;
-
-    api.me(token)
+    api
+      .me(token)
       .then((user) => {
-        if (ativo) setUsuario(user);
+        if (ativo) {
+          localStorage.setItem(USER_KEY, JSON.stringify(user));
+          setUsuario(user);
+        }
       })
       .catch(() => {
         localStorage.removeItem(TOKEN_KEY);
+        localStorage.removeItem(USER_KEY);
       })
       .finally(() => {
         if (ativo) setVerificandoSessao(false);
@@ -54,27 +36,34 @@ export default function App() {
     };
   }, []);
 
-  // Atualiza a página selecionada pela URL
   useEffect(() => {
-    if (!window.location.hash) {
-      window.history.replaceState(null, '', '#landing');
+    function handleMessage(event: MessageEvent) {
+      if (event.data && event.data.type === 'STAANDER_LOGOUT') {
+        handleLogout();
+      }
     }
-
-    const syncPage = () => setActivePage(getPageFromHash());
-
-    window.addEventListener('hashchange', syncPage);
-    return () => window.removeEventListener('hashchange', syncPage);
+    function handleStorage(event: StorageEvent) {
+      if (event.key === TOKEN_KEY && !event.newValue) {
+        setUsuario(null);
+      }
+    }
+    window.addEventListener('message', handleMessage);
+    window.addEventListener('storage', handleStorage);
+    return () => {
+      window.removeEventListener('message', handleMessage);
+      window.removeEventListener('storage', handleStorage);
+    };
   }, []);
 
-  // Executado após login ou cadastro bem-sucedido
   function handleAuthenticated(token: string, user: AuthUser) {
     localStorage.setItem(TOKEN_KEY, token);
+    localStorage.setItem(USER_KEY, JSON.stringify(user));
     setUsuario(user);
   }
 
-  // Encerra a sessão
   function handleLogout() {
     localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(USER_KEY);
     setUsuario(null);
   }
 
@@ -90,80 +79,14 @@ export default function App() {
     return <Login onAuthenticated={handleAuthenticated} />;
   }
 
-  const activeExperience = pages.find(
-    (page): page is Extract<(typeof pages)[number], { src: string }> =>
-      page.id === activePage && 'src' in page,
-  );
-
   return (
-    <div className="staander-shell">
-      <header className="app-header">
-        <a className="app-brand" href="#landing" aria-label="Staander — página inicial">
-          staander<span>.</span>
-        </a>
-
-        <nav className="app-navigation" aria-label="Páginas do Staander">
-          {pages.map((page) => (
-            <a
-              key={page.id}
-              href={`#${page.id}`}
-              className={`app-nav-link${activePage === page.id ? ' active' : ''}`}
-              aria-current={activePage === page.id ? 'page' : undefined}
-            >
-              <span>{page.label}</span>
-              <small>{page.description}</small>
-            </a>
-          ))}
-        </nav>
-
-        <div className="user-session">
-          <span>{usuario.nome}</span>
-          <button type="button" onClick={handleLogout}>
-            Sair
-          </button>
-        </div>
-      </header>
-
-      <main className={`app-content${activePage === 'app' ? ' crud-content' : ''}`}>
-        {activePage === 'app' ? (
-          <div className="crud-workspace">
-            <div className="crud-intro">
-              <p className="kicker">SUA BIBLIOTECA</p>
-              <h1>Organize seu conhecimento.</h1>
-              <p>Gerencie os arquivos, as tags e as notas da sua biblioteca Staander.</p>
-
-              <div className="crud-jump-links" aria-label="Ir para uma área">
-                <a href="#biblioteca">Biblioteca</a>
-                <a href="#tags">Tags</a>
-                <a href="#notas">Notas</a>
-              </div>
-            </div>
-
-            <section id="biblioteca" className="crud-section">
-              <ItemCrud />
-            </section>
-
-            <section id="tags" className="crud-section">
-              <TagCrud />
-            </section>
-
-            <section id="notas" className="crud-section">
-              <NoteCrud />
-            </section>
-
-            <footer className="app-footer">
-              © 2026 Staander · Sua biblioteca digital, finalmente sob controle.
-            </footer>
-          </div>
-        ) : (
-          <iframe
-            key={activeExperience?.src}
-            className="experience-frame"
-            src={activeExperience?.src ?? '/paginas/landing/index.html'}
-            title={activeExperience?.label ?? 'Staander'}
-          />
-        )}
-      </main>
-    </div>
+    <main className="staander-shell">
+      <iframe
+        key={usuario.id}
+        className="experience-frame"
+        src="/paginas/mvp/index.html"
+        title="Staander"
+      />
+    </main>
   );
 }
