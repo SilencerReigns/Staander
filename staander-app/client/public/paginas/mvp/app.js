@@ -27,6 +27,36 @@ function progressOf(item){
  return {total,max,percent:total?Math.min(100,Math.round(max/total*100)):0};
 }
 function toast(t){const x=$("toast");x.textContent=t;x.classList.add("show");setTimeout(()=>x.classList.remove("show"),2400)}
+function authHeaders(){
+ const token=localStorage.getItem("staander_token");
+ return token?{Authorization:"Bearer "+token}:{};
+}
+function apiFetch(path,options={}){
+ return fetch(path,{...options,headers:{...options.headers,...authHeaders()}});
+}
+function logout(){
+ localStorage.removeItem("staander_token");
+ window.parent.location.reload();
+}
+async function loadProfile(){
+ try{
+  const response=await apiFetch("/api/me");
+  if(response.status===401){logout();return}
+  if(!response.ok)throw new Error("Erro "+response.status);
+  const user=await response.json();
+  $("profileName").textContent=user.nome;
+  const initials=user.nome.trim().split(/\s+/).slice(0,2).map(part=>part[0]).join("").toUpperCase()||"--";
+  $("profileAvatar").textContent=initials;
+  $("topAvatar").textContent=initials;
+  const isAdmin=user.role==="admin";
+  $("adminDivider").hidden=!isAdmin;
+  $("adminLabel").hidden=!isAdmin;
+  $("adminNav").hidden=!isAdmin;
+ }catch(error){
+  toast("Não foi possível carregar seu perfil. "+error.message);
+ }
+}
+$("logoutButton").addEventListener("click",logout);
 
 // ---------- navegação ----------
 function openPage(id){
@@ -39,6 +69,7 @@ function openPage(id){
  if(id==="library")renderLibrary();
  if(id==="notes")renderNotes();
  if(id==="search")runSearch();
+ if(id==="admin")loadAdminProgress();
 }
 function openReaderFromNav(){
  if(currentBook){
@@ -73,7 +104,7 @@ document.addEventListener("click",e=>{
 // ---------- dados ----------
 async function loadData(){
  try{
-  const responses=await Promise.all([fetch("/api/items"),fetch("/api/notes")]);
+  const responses=await Promise.all([apiFetch("/api/items"),apiFetch("/api/notes")]);
   if(responses.some(response=>!response.ok))throw new Error("A API retornou um erro.");
   const [items,notesData]=await Promise.all(responses.map(response=>response.json()));
   apiItems=items;
@@ -85,6 +116,38 @@ async function loadData(){
  renderHome(); renderLibrary(); renderNotes();
  if($("search").classList.contains("active"))runSearch();
  if(currentBook)renderReaderNotes();
+}
+
+async function loadAdminProgress(){
+ const status=$("adminProgressStatus");
+ const list=$("adminProgressList");
+ status.textContent="Carregando progresso...";
+ list.replaceChildren();
+ try{
+  const response=await apiFetch("/api/admin/progress");
+  const data=await response.json();
+  if(!response.ok)throw new Error(data.error||"Erro "+response.status);
+  if(data.usuarios.length===0){
+   status.textContent="Ainda não há usuários cadastrados.";
+   return;
+  }
+  status.textContent="";
+  list.innerHTML=data.usuarios.map(user=>{
+   const items=user.itens.length
+    ? user.itens.map(item=>{
+      const percent=Number.isFinite(item.percentual)?Math.max(0,Math.min(100,item.percentual)):null;
+      const statusLabel={nao_lido:"Não iniciado",em_leitura:"Em leitura",lido:"Concluído"}[item.status]||"Sem status";
+      const progress=percent===null
+       ? "Progresso ainda não disponível"
+       : `${item.paginasLidas} / ${item.totalPaginas} páginas · ${percent}%`;
+      return `<article class="admin-progress-item"><div class="admin-progress-heading"><b>${esc(item.titulo)}</b><span>${statusLabel}</span></div><p>${progress}</p><div class="admin-progress-bar"><i style="width:${percent||0}%"></i></div></article>`;
+     }).join("")
+    : '<p class="muted">Nenhum arquivo na biblioteca.</p>';
+   return `<section class="panel admin-user"><div class="admin-user-heading"><div><h2>${esc(user.nome)}</h2><p>${esc(user.email)}</p></div><span>${user.itens.length} arquivo(s)</span></div>${items}</section>`;
+  }).join("");
+ }catch(error){
+  status.textContent="Não foi possível carregar o progresso. "+error.message;
+ }
 }
 
 // ---------- visão geral ----------
@@ -190,7 +253,7 @@ async function saveNote(event){
  button.disabled=true;
  setNoteError("");
  try{
-  const response=await fetch("/api/notes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({itemId,conteudo,posicao})});
+  const response=await apiFetch("/api/notes",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({itemId,conteudo,posicao})});
   if(!response.ok)throw new Error("Erro "+response.status);
   closeNoteModal();
   await loadData();
@@ -252,7 +315,7 @@ $("confirmOk").addEventListener("click",()=>closeConfirm(true));
 $("confirmCancel").addEventListener("click",()=>closeConfirm(false));
 async function deleteRequest(path){
  try{
-  const response=await fetch(path,{method:"DELETE"});
+  const response=await apiFetch(path,{method:"DELETE"});
   if(!response.ok)throw new Error("Erro "+response.status);
   return true;
  }catch(error){
@@ -335,13 +398,28 @@ async function openReader(title,id,page){
  renderReaderNotes();
  await startReading(item,page);
 }
+ $("readerOpenTab").addEventListener("click",async event=>{
+  event.preventDefault();
+  const tab=window.open("about:blank","_blank");
+  if(!tab){toast("Permita pop-ups para abrir o arquivo em outra aba.");return}
+  try{
+   const response=await apiFetch($("readerOpenTab").href);
+   if(!response.ok)throw new Error("Erro "+response.status);
+   const url=URL.createObjectURL(await response.blob());
+   tab.location.href=url;
+   setTimeout(()=>URL.revokeObjectURL(url),60000);
+  }catch(error){
+   tab.close();
+   toast("Não foi possível abrir o arquivo. "+error.message);
+  }
+ });
 async function startReading(item,forcePage){
  closeReading();
  const token=++reading.token;
  showReaderMessage("Carregando arquivo...",false);
  try{
   const lib=await loadPdfjs();
-  const task=lib.getDocument({url:"/api/items/"+encodeURIComponent(item.id)+"/arquivo",cMapUrl:asset("cmaps/"),cMapPacked:true,standardFontDataUrl:asset("standard_fonts/"),wasmUrl:asset("wasm/"),isEvalSupported:false});
+  const task=lib.getDocument({url:"/api/items/"+encodeURIComponent(item.id)+"/arquivo",httpHeaders:authHeaders(),cMapUrl:asset("cmaps/"),cMapPacked:true,standardFontDataUrl:asset("standard_fonts/"),wasmUrl:asset("wasm/"),isEvalSupported:false});
   reading.task=task;
   const pdf=await task.promise;
   if(token!==reading.token){pdf.destroy();return}
@@ -468,7 +546,7 @@ async function saveProgress(keepalive){
  const body={paginaAtual:reading.current,maxPagina:reading.max,totalPaginas:reading.total,ultimaLeituraEm:new Date().toISOString()};
  body.status=reading.max>=reading.total?"lido":(item&&item.status==="lido"?"lido":"em_leitura");
  try{
-  const response=await fetch("/api/items/"+encodeURIComponent(reading.id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),keepalive:!!keepalive});
+  const response=await apiFetch("/api/items/"+encodeURIComponent(reading.id),{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),keepalive:!!keepalive});
   if(!response.ok)throw new Error("Erro "+response.status);
   const updated=await response.json();
   if(item)Object.assign(item,updated);
@@ -530,7 +608,7 @@ async function importFiles(fileList){
  setImportStatus(files.length===1?"Importando 1 arquivo...":"Importando "+files.length+" arquivos...");
  let data;
  try{
-  const response=await fetch("/api/items/import",{method:"POST",body:form});
+  const response=await apiFetch("/api/items/import",{method:"POST",body:form});
   data=await response.json().catch(()=>({}));
   // 422: nenhum arquivo aproveitado, mas o corpo traz os motivos
   if(!response.ok&&response.status!==422)throw new Error(data.error||"Erro "+response.status);
@@ -567,4 +645,4 @@ document.addEventListener("keydown",e=>{
  if(e.key==="Escape"){closeConfirm(false);closeModal();closeNoteModal()}
 });
 
-renderHome();renderLibrary();renderNotes();renderReaderNotes();loadData();
+renderHome();renderLibrary();renderNotes();renderReaderNotes();loadProfile();loadData();

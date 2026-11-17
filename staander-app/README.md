@@ -26,6 +26,13 @@ As páginas estáticas originais foram mantidas em `client/public/paginas` para 
 
 As notas cadastradas em **Aplicação → Notas** aparecem na lateral do leitor do MVP quando estão vinculadas a um item cujo título corresponde ao e-book aberto.
 
+## Contas e perfil de administrador
+
+- Novos cadastros recebem o perfil `user`. O nome da conta e o botão **Sair** aparecem em **Meu espaço**, na parte inferior da barra lateral do MVP.
+- Para promover uma conta a administradora, pare a API, altere manualmente o campo `"role"` dessa conta para `"admin"` em `server/data.json` e reinicie a API. Exemplo: `"role": "admin"`. Não altere o campo `senha`.
+- Administradores veem a opção **Progresso dos usuários**, com o status e o progresso por arquivo. O servidor também verifica o perfil antes de responder à rota administrativa.
+- Arquivos, tags e notas são vinculados ao usuário por `usuarioId`; as rotas comuns retornam e alteram apenas os dados do usuário autenticado. O painel administrativo não concede acesso aos arquivos privados.
+
 ## Importação de PDFs
 
 O botão **Importar arquivo** do MVP (na Visão geral e na Biblioteca) abre o seletor de arquivos do computador. Também é possível arrastar PDFs para a janela de importação.
@@ -63,4 +70,23 @@ A barra de busca do topo (ou `Ctrl + K`) abre a página de busca. Ela procura, s
 
 ## Testes
 
-`tests/test.py` (Selenium) foi escrito para a tela de CRUD removida e precisa ser adaptado ao MVP antes de voltar a ser usado.
+Os testes E2E em `tests/test.py` mantêm a cobertura das operações antigas de itens, tags e notas e dos fluxos do MVP, além de cobrir cadastro, login inválido, perfil, logout e restrição de acesso administrativo. Itens e tags têm CRUD validado pela API autenticada no navegador; PDFs e notas são criados/excluídos pela interface, e a atualização de nota é validada pela API porque o MVP não tem editor de notas.
+
+Os testes exigem Python 3, Selenium, Google Chrome e os servidores da API e do cliente em execução. Cada execução cria uma conta de teste com e-mail exclusivo em `server/data.json`; os testes limpam os itens, arquivos, tags e notas criados.
+
+A partir da raiz do repositório, instale o Selenium e execute:
+
+```bash
+python3 -m pip install selenium
+python3 -m unittest discover -s staander-app/tests -p test.py -v
+```
+
+Use Python 3; em algumas instalações do Windows, `python` ainda aponta para Python 2.7. Se o terminal já estiver em `staander-app/tests`, use `python3 -m unittest discover -s . -p test.py -v`.
+
+Por padrão, o Chrome roda em modo headless. Para acompanhar a execução visualmente e deixar as interações mais lentas:
+
+```bash
+STAANDER_HEADLESS=0 STAANDER_ACTION_DELAY=0.6 python3 -m unittest discover -s staander-app/tests -p test.py -v
+```
+
+Em PowerShell, defina as variáveis com `$env:STAANDER_HEADLESS="0"` e `$env:STAANDER_ACTION_DELAY="0.6"` antes de executar `py -3 -m unittest discover -s staander-app/tests -p test.py -v`. `CHROMEDRIVER` pode apontar para um driver específico; se omitido, o Selenium Manager tenta localizar um compatível. O teste de cadastro deixa uma conta de teste com e-mail exclusivo em `server/data.json`.

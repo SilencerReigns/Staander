@@ -1,42 +1,49 @@
-"""Testes E2E dos CRUDs atuais do Staander.
+# -*- coding: utf-8 -*-
+"""Selenium E2E tests for auth and the current MVP.
 
-Pré-requisitos:
-    - API em http://localhost:5150
-    - Frontend em http://localhost:5173
-    - Google Chrome instalado
-    - python -m pip install selenium
-    - se o Selenium Manager não localizar o driver, definir CHROMEDRIVER
+Requires Python 3, Selenium, Google Chrome, and the API/client dev servers.
+The suite creates one uniquely named test account in server/data.json.
 
-Execução a partir da raiz do repositório:
-    python -m unittest discover -s staander-app/tests -p test.py -v
+Run from the repository root:
+    python3 -m unittest discover -s staander-app/tests -p test.py -v
+
+Show Chrome and slow interactions down:
+    STAANDER_HEADLESS=0 STAANDER_ACTION_DELAY=0.6 python3 -m unittest discover -s staander-app/tests -p test.py -v
 """
 
 import os
+import tempfile
+import time
 import unittest
 import uuid
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import Select, WebDriverWait
-from selenium.common.exceptions import StaleElementReferenceException
-from selenium.webdriver.chrome.service import Service
 
 
 BASE_URL = os.environ.get("STAANDER_BASE_URL", "http://localhost:5173")
-WAIT_SECONDS = 15
+WAIT_SECONDS = 20
+ACTION_DELAY = max(0.0, float(os.environ.get("STAANDER_ACTION_DELAY", "0.4")))
+HEADLESS = os.environ.get("STAANDER_HEADLESS", "1").strip().lower() not in (
+    "0",
+    "false",
+    "no",
+)
 
 
-class StaanderCRUDTests(unittest.TestCase):
+class StaanderE2ETests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         options = Options()
-        options.add_argument("--headless=new")
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--disable-gpu")
+        if HEADLESS:
+            options.add_argument("--headless=new")
         options.add_argument("--window-size=1440,1000")
+        options.add_argument("--disable-gpu")
 
         driver_path = os.environ.get("CHROMEDRIVER")
         if driver_path:
@@ -44,251 +51,397 @@ class StaanderCRUDTests(unittest.TestCase):
                 service=Service(executable_path=driver_path), options=options
             )
         else:
-            # Selenium Manager encontra automaticamente um driver compatível.
             cls.driver = webdriver.Chrome(options=options)
         cls.wait = WebDriverWait(cls.driver, WAIT_SECONDS)
+        cls.action_delay = ACTION_DELAY
+        cls.account_name = "Selenium {}".format(uuid.uuid4().hex[:8])
+        cls.account_email = "selenium-{}@example.test".format(uuid.uuid4().hex)
+        cls.account_password = "Selenium-test-123!"
+        cls.register_test_account()
 
     @classmethod
     def tearDownClass(cls):
         if hasattr(cls, "driver"):
             cls.driver.quit()
 
+    @classmethod
+    def pause(cls):
+        time.sleep(cls.action_delay)
+
+    @classmethod
+    def register_test_account(cls):
+        cls.driver.get(BASE_URL)
+        cls.wait.until(EC.visibility_of_element_located((By.ID, "auth-email")))
+        cls.driver.find_element(By.CSS_SELECTOR, ".auth-switch button").click()
+        cls.pause()
+        cls.wait.until(EC.visibility_of_element_located((By.ID, "auth-nome")))
+        cls.driver.find_element(By.ID, "auth-nome").send_keys(cls.account_name)
+        cls.pause()
+        cls.driver.find_element(By.ID, "auth-email").send_keys(cls.account_email)
+        cls.pause()
+        cls.driver.find_element(By.ID, "auth-senha").send_keys(cls.account_password)
+        cls.pause()
+        cls.driver.find_element(By.CSS_SELECTOR, ".auth-submit").click()
+        cls.switch_to_mvp(cls.account_name)
+
+        profile = cls.driver.execute_async_script(
+            """
+            const done = arguments[0];
+            fetch('/api/me', {
+              headers: { Authorization: 'Bearer ' + localStorage.getItem('staander_token') }
+            }).then(response => response.json()).then(done).catch(() => done(null));
+            """
+        )
+        if not profile or profile.get("role") != "user":
+            raise AssertionError("Cadastro não criou uma conta comum válida.")
+        cls.account_id = profile["id"]
+        cls.driver.find_element(By.ID, "logoutButton").click()
+        cls.driver.switch_to.default_content()
+        cls.wait.until(EC.visibility_of_element_located((By.ID, "auth-email")))
+
+    @classmethod
+    def switch_to_mvp(cls, expected_name):
+        frame = cls.wait.until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, 'iframe[src="/paginas/mvp/index.html"]')
+            )
+        )
+        cls.driver.switch_to.frame(frame)
+        cls.wait.until(
+            lambda driver: driver.find_element(By.ID, "profileName").text
+            == expected_name
+        )
+
     def setUp(self):
+        self.driver.switch_to.default_content()
         self.driver.get(BASE_URL)
-        self.wait.until(
-            EC.element_to_be_clickable((By.CSS_SELECTOR, 'a[href="#app"]'))
-        )
-        self.driver.find_element(By.CSS_SELECTOR, 'a[href="#app"]').click()
-        self.wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, "section#biblioteca"))
-        )
-
-    def section(self, section_id):
-        return self.driver.find_element(By.ID, section_id)
-
-    def open_section(self, section_id):
-        """Rola até a seção sem trocar o hash de rota do app."""
-        section = self.section(section_id)
         self.driver.execute_script(
-            "arguments[0].scrollIntoView({block: 'start'});", section
+            "window.localStorage.removeItem('staander_token');"
         )
-        self.wait.until(lambda _driver: section.is_displayed())
-        self.wait.until(lambda _driver: "Carregando" not in section.text)
-        return section
+        self.driver.refresh()
+        self.wait.until(EC.visibility_of_element_located((By.ID, "auth-email")))
 
-    def rows(self, section_id):
-        section = self.section(section_id)
-        tables = section.find_elements(By.CSS_SELECTOR, "table tbody tr")
-        return tables
+    def pause(self):
+        time.sleep(ACTION_DELAY)
 
-    def row_for(self, section_id, text):
-        row = self.find_row(section_id, text)
-        if row:
-            return row
-        self.fail(f"Não encontrei a linha '{text}' na seção #{section_id}.")
-
-    def find_row(self, section_id, text):
-        # Reconsulta a tabela a cada tentativa: React substitui as linhas quando
-        # a lista muda e referências antigas podem ficar obsoletas.
-        for _ in range(3):
-            try:
-                for row in self.rows(section_id):
-                    if text in (row.get_attribute("innerText") or ""):
-                        return row
-            except StaleElementReferenceException:
-                continue
-        return None
-
-    def field(self, section, label, control="input"):
-        xpath = (
-            f".//form//label[contains(normalize-space(.), '{label}')]"
-            f"/following-sibling::{control}[1]"
+    def fill(self, selector, value):
+        field = self.wait.until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, selector))
         )
-        return section.find_element(By.XPATH, xpath)
+        field.clear()
+        field.send_keys(value)
+        self.pause()
+        return field
 
-    def submit(self, section):
-        section.find_element(By.CSS_SELECTOR, "form button[type='submit']").click()
+    def click(self, selector):
+        button = self.wait.until(
+            EC.element_to_be_clickable((By.CSS_SELECTOR, selector))
+        )
+        button.click()
+        self.pause()
+        return button
 
-    def wait_for_toast(self, section_id, expected_text):
-        def toast_result(_driver):
-            try:
-                messages = [
-                    toast.get_attribute("innerText")
-                    for toast in self.section(section_id).find_elements(
-                        By.CSS_SELECTOR, ".toast"
+    def login(self, email=None, password=None):
+        self.fill("#auth-email", email or self.account_email)
+        self.fill("#auth-senha", password or self.account_password)
+        self.click(".auth-submit")
+
+    def enter_mvp(self):
+        self.wait.until(
+            EC.presence_of_element_located(
+                (By.CSS_SELECTOR, 'iframe[src="/paginas/mvp/index.html"]')
+            )
+        )
+        self.driver.switch_to.frame(
+            self.driver.find_element(
+                By.CSS_SELECTOR, 'iframe[src="/paginas/mvp/index.html"]'
+            )
+        )
+        self.wait.until(
+            lambda driver: driver.find_element(By.ID, "profileName").text
+            == self.account_name
+        )
+
+    def api_request(self, method, path, body=None):
+        return self.driver.execute_async_script(
+            """
+            const done = arguments[0];
+            const method = arguments[1];
+            const path = arguments[2];
+            const body = arguments[3];
+            const options = {
+              method,
+              headers: {
+                Authorization: 'Bearer ' + localStorage.getItem('staander_token')
+              }
+            };
+            if (body !== null) {
+              options.headers['Content-Type'] = 'application/json';
+              options.body = JSON.stringify(body);
+            }
+            fetch(path, options).then(async response => {
+              const payload = await response.json().catch(() => null);
+              done({ status: response.status, body: payload });
+            }).catch(error => done({ status: 0, error: String(error) }));
+            """,
+            method,
+            path,
+            body,
+        )
+
+    def open_page(self, page):
+        self.click('.nav[data-page="{}"]'.format(page))
+        self.wait.until(
+            lambda driver: "active"
+            in driver.find_element(By.ID, page).get_attribute("class").split()
+        )
+
+    def confirm_delete(self):
+        self.wait.until(EC.visibility_of_element_located((By.ID, "confirmModal")))
+        self.click("#confirmOk")
+        self.wait.until(
+            lambda driver: "hidden"
+            in driver.find_element(By.ID, "confirmModal").get_attribute("class").split()
+        )
+
+    def upload_pdf(self, title):
+        self.open_page("library")
+        self.click("#library .page-head .primary")
+        self.wait.until(EC.visibility_of_element_located((By.ID, "modal")))
+
+        file_path = os.path.join(tempfile.gettempdir(), title + ".pdf")
+        with open(file_path, "wb") as pdf:
+            pdf.write(b"%PDF-1.4\n% Selenium test PDF\n%%EOF\n")
+
+        file_input = self.driver.find_element(By.ID, "fileInput")
+        self.driver.execute_script(
+            "arguments[0].hidden = false; arguments[0].style.display = 'block';",
+            file_input,
+        )
+        file_input.send_keys(file_path)
+        self.pause()
+
+        card = self.wait.until(
+            lambda driver: next(
+                (
+                    item
+                    for item in driver.find_elements(
+                        By.CSS_SELECTOR, "#libraryGrid .book"
                     )
-                ]
-            except StaleElementReferenceException:
-                return False
-            if any(message and message.startswith("Erro:") for message in messages):
-                raise AssertionError("A aplicação recusou a operação: " + " | ".join(messages))
-            return any(expected_text in (message or "") for message in messages)
-
-        self.wait.until(toast_result)
-
-    def delete_row(self, section_id, row):
-        row.find_element(By.XPATH, ".//button[contains(., 'Excluir')]").click()
-        alert = self.wait.until(EC.alert_is_present())
-        alert.accept()
-
-    def create_item(self, title):
-        section = self.open_section("biblioteca")
-        old_count = len(self.rows("biblioteca"))
-
-        self.field(section, "Título").send_keys(title)
-        Select(self.field(section, "Tipo", "select")).select_by_value("PDF")
-        self.field(section, "Tamanho").send_keys("2 MB")
-        Select(self.field(section, "Status", "select")).select_by_value("nao_lido")
-        self.submit(section)
-
-        self.wait_for_toast("biblioteca", "Item criado com sucesso")
-        self.wait.until(lambda _driver: len(self.rows("biblioteca")) == old_count + 1)
-        return self.row_for("biblioteca", title)
-
-    def test_01_crud_itens(self):
-        self.open_section("biblioteca")
-        original_count = len(self.rows("biblioteca"))
-        suffix = uuid.uuid4().hex[:8]
-        title = f"Livro Selenium {suffix}"
-        edited_title = f"Livro Selenium editado {suffix}"
-        try:
-            self.create_item(title)
-            row = self.row_for("biblioteca", title)
-            row.find_element(By.XPATH, ".//button[contains(., 'Editar')]").click()
-
-            section = self.section("biblioteca")
-            title_input = self.field(section, "Título")
-            title_input.clear()
-            title_input.send_keys(edited_title)
-            self.submit(section)
-
-            self.wait_for_toast("biblioteca", "Item atualizado com sucesso")
-            self.wait.until(
-                lambda _driver: self.find_row("biblioteca", edited_title) is not None
+                    if item.get_attribute("data-title") == title
+                ),
+                False,
             )
+        )
+        return card.get_attribute("data-id"), file_path
 
-            row = self.row_for("biblioteca", edited_title)
-            self.delete_row("biblioteca", row)
-            self.wait.until(lambda _driver: len(self.rows("biblioteca")) == original_count)
+    def test_login_rejects_invalid_credentials(self):
+        email = "missing-{}@example.test".format(uuid.uuid4().hex)
+        self.login(email, "wrong-password")
+        message = self.wait.until(
+            lambda driver: driver.find_element(By.CSS_SELECTOR, ".auth-message").text
+        )
+        self.assertIn("Email ou senha incorretos", message)
+
+    def test_registration_login_profile_logout_and_role_guard(self):
+        self.login()
+        self.enter_mvp()
+
+        profile = self.api_request("GET", "/api/me")
+        self.assertEqual(profile["status"], 200)
+        self.assertEqual(profile["body"]["id"], self.account_id)
+        self.assertEqual(profile["body"]["role"], "user")
+        self.assertFalse(self.driver.find_element(By.ID, "adminNav").is_displayed())
+        self.assertEqual(
+            self.api_request("GET", "/api/admin/progress")["status"], 403
+        )
+
+        self.click("#logoutButton")
+        self.driver.switch_to.default_content()
+        self.wait.until(EC.visibility_of_element_located((By.ID, "auth-email")))
+
+        self.login()
+        self.enter_mvp()
+        self.assertEqual(
+            self.driver.find_element(By.ID, "profileName").text,
+            self.account_name,
+        )
+
+    def test_items_crud_api(self):
+        self.login()
+        self.enter_mvp()
+        title = "Selenium item {}".format(uuid.uuid4().hex[:8])
+        created = self.api_request(
+            "POST",
+            "/api/items",
+            {
+                "titulo": title,
+                "tipo": "PDF",
+                "tamanho": "1 KB",
+                "status": "nao_lido",
+                "usuarioId": "another-user",
+            },
+        )
+        self.assertEqual(created["status"], 201)
+        item_id = created["body"]["id"]
+        self.assertEqual(created["body"]["usuarioId"], self.account_id)
+
+        try:
+            updated = self.api_request(
+                "PUT",
+                "/api/items/{}".format(item_id),
+                {"titulo": title + " editado", "status": "em_leitura"},
+            )
+            self.assertEqual(updated["status"], 200)
+            fetched = self.api_request("GET", "/api/items/{}".format(item_id))
+            self.assertEqual(fetched["body"]["titulo"], title + " editado")
+            self.assertEqual(fetched["body"]["usuarioId"], self.account_id)
         finally:
-            row = self.find_row("biblioteca", title) or self.find_row(
-                "biblioteca", edited_title
-            )
-            if row:
-                self.delete_row("biblioteca", row)
-                self.wait.until(
-                    lambda _driver: not self.find_row("biblioteca", title)
-                    and not self.find_row("biblioteca", edited_title)
-                )
+            deleted = self.api_request("DELETE", "/api/items/{}".format(item_id))
+            self.assertIn(deleted["status"], (200, 404))
 
-    def test_02_crud_tags(self):
-        section = self.open_section("tags")
-        original_count = len(self.rows("tags"))
-        suffix = uuid.uuid4().hex[:8]
-        name = f"Tag Selenium {suffix}"
-        edited_name = f"Tag Selenium editada {suffix}"
+        self.assertEqual(
+            self.api_request("GET", "/api/items/{}".format(item_id))["status"],
+            404,
+        )
+
+    def test_tags_crud_api(self):
+        self.login()
+        self.enter_mvp()
+        name = "Selenium tag {}".format(uuid.uuid4().hex[:8])
+        created = self.api_request(
+            "POST", "/api/tags", {"nome": name, "usuarioId": "another-user"}
+        )
+        self.assertEqual(created["status"], 201)
+        tag_id = created["body"]["id"]
+        self.assertEqual(created["body"]["usuarioId"], self.account_id)
+
         try:
-            self.field(section, "Nome").send_keys(name)
-            self.submit(section)
-
-            self.wait_for_toast("tags", "Tag criada com sucesso")
-            self.wait.until(lambda _driver: len(self.rows("tags")) == original_count + 1)
-            row = self.row_for("tags", name)
-            row.find_element(By.XPATH, ".//button[contains(., 'Editar')]").click()
-
-            name_input = self.field(section, "Nome")
-            name_input.clear()
-            name_input.send_keys(edited_name)
-            self.submit(section)
-
-            self.wait_for_toast("tags", "Tag atualizada com sucesso")
-            self.wait.until(
-                lambda _driver: self.find_row("tags", edited_name) is not None
+            updated = self.api_request(
+                "PUT", "/api/tags/{}".format(tag_id), {"nome": name + " editada"}
             )
-
-            self.delete_row("tags", self.row_for("tags", edited_name))
-            self.wait.until(lambda _driver: len(self.rows("tags")) == original_count)
+            self.assertEqual(updated["status"], 200)
+            fetched = self.api_request("GET", "/api/tags/{}".format(tag_id))
+            self.assertEqual(fetched["body"]["nome"], name + " editada")
         finally:
-            row = self.find_row("tags", name) or self.find_row("tags", edited_name)
-            if row:
-                self.delete_row("tags", row)
-                self.wait.until(
-                    lambda _driver: not self.find_row("tags", name)
-                    and not self.find_row("tags", edited_name)
-                )
+            deleted = self.api_request("DELETE", "/api/tags/{}".format(tag_id))
+            self.assertIn(deleted["status"], (200, 404))
 
-    def test_03_crud_notas(self):
-        self.open_section("biblioteca")
-        suffix = uuid.uuid4().hex[:8]
-        item_title = f"Item base Selenium {suffix}"
-        note_text = f"Nota Selenium {suffix}"
-        edited_note_text = f"Nota Selenium editada {suffix}"
-        created_item = False
+        self.assertEqual(
+            self.api_request("GET", "/api/tags/{}".format(tag_id))["status"], 404
+        )
 
+    def test_mvp_import_and_delete_pdf(self):
+        self.login()
+        self.enter_mvp()
+        title = "Selenium PDF {}".format(uuid.uuid4().hex[:8])
+        item_id = None
+        file_path = None
         try:
-            # A nota precisa estar vinculada a um item existente.
-            items = self.rows("biblioteca")
-            if not items:
-                self.create_item(item_title)
-                created_item = True
-                # O formulário de notas carrega seus itens ao montar a página.
-                self.driver.refresh()
-                self.wait.until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "section#biblioteca")
+            item_id, file_path = self.upload_pdf(title)
+            self.assertTrue(item_id)
+            self.assertEqual(
+                self.api_request("GET", "/api/items/{}".format(item_id))["status"],
+                200,
+            )
+
+            card = self.driver.find_element(
+                By.CSS_SELECTOR, '.book[data-id="{}"]'.format(item_id)
+            )
+            ActionChains(self.driver).move_to_element(card).perform()
+            self.pause()
+            self.click(
+                '.book[data-id="{}"] [data-delete]'.format(item_id)
+            )
+            self.confirm_delete()
+            self.wait.until(
+                lambda driver: not driver.find_elements(
+                    By.CSS_SELECTOR, '.book[data-id="{}"]'.format(item_id)
+                )
+            )
+            item_id = None
+        finally:
+            if item_id:
+                self.api_request("DELETE", "/api/items/{}".format(item_id))
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
+
+    def test_mvp_notes_create_update_delete(self):
+        self.login()
+        self.enter_mvp()
+        title = "Selenium note PDF {}".format(uuid.uuid4().hex[:8])
+        item_id = None
+        file_path = None
+        note_id = None
+        try:
+            item_id, file_path = self.upload_pdf(title)
+            self.open_page("notes")
+            self.click("#notes .page-head .primary")
+            self.wait.until(EC.visibility_of_element_located((By.ID, "noteModal")))
+            Select(self.driver.find_element(By.ID, "noteItem")).select_by_value(item_id)
+
+            content = "Nota Selenium {}".format(uuid.uuid4().hex[:8])
+            edited_content = content + " editada"
+            self.fill("#notePage", "1")
+            self.fill("#noteText", content)
+            self.click("#noteSave")
+            self.wait.until(
+                lambda driver: any(
+                    content in row.text
+                    for row in driver.find_elements(
+                        By.CSS_SELECTOR, "#notesList .note-row"
                     )
                 )
+            )
 
-            notes_section = self.open_section("notas")
-            original_notes = len(self.rows("notas"))
+            notes = self.api_request("GET", "/api/notes")
+            note = next(
+                (
+                    item
+                    for item in notes["body"]
+                    if item["conteudo"] == content and item["itemId"] == item_id
+                ),
+                None,
+            )
+            self.assertIsNotNone(note)
+            note_id = note["id"]
 
-            item_select = Select(self.field(notes_section, "Item relacionado", "select"))
-            item_select.select_by_index(1)
-            self.field(notes_section, "Conteúdo da nota", "textarea").send_keys(note_text)
-            self.field(notes_section, "Posição").send_keys("Página 10")
-            self.submit(notes_section)
-
-            self.wait_for_toast("notas", "Nota criada com sucesso")
-            self.wait.until(lambda _driver: len(self.rows("notas")) == original_notes + 1)
-            row = self.row_for("notas", note_text)
-            row.find_element(By.XPATH, ".//button[contains(., 'Editar')]").click()
-
-            notes_section = self.section("notas")
-            content = self.field(notes_section, "Conteúdo da nota", "textarea")
-            content.clear()
-            content.send_keys(edited_note_text)
-            self.submit(notes_section)
-
-            self.wait_for_toast("notas", "Nota atualizada com sucesso")
+            updated = self.api_request(
+                "PUT",
+                "/api/notes/{}".format(note_id),
+                {"conteudo": edited_content, "posicao": "2"},
+            )
+            self.assertEqual(updated["status"], 200)
+            self.driver.execute_async_script(
+                "const done = arguments[0]; loadData().then(done);"
+            )
             self.wait.until(
-                lambda _driver: self.find_row("notas", edited_note_text) is not None
-            )
-
-            self.delete_row("notas", self.row_for("notas", edited_note_text))
-            self.wait.until(lambda _driver: len(self.rows("notas")) == original_notes)
-        finally:
-            # Remove a nota de teste caso uma etapa anterior tenha falhado.
-            note_row = self.find_row("notas", note_text) or self.find_row(
-                "notas", edited_note_text
-            )
-            if note_row:
-                self.delete_row("notas", note_row)
-                self.wait.until(
-                    lambda _driver: not self.find_row("notas", note_text)
-                    and not self.find_row("notas", edited_note_text)
-                )
-
-            # Remove o item de apoio criado por este teste, se necessário.
-            if created_item:
-                self.open_section("biblioteca")
-                item_row = self.row_for("biblioteca", item_title)
-                self.delete_row("biblioteca", item_row)
-                self.wait.until(
-                    lambda _driver: not any(
-                        item_title in (row.get_attribute("innerText") or "")
-                        for row in self.rows("biblioteca")
+                lambda driver: any(
+                    edited_content in row.text
+                    for row in driver.find_elements(
+                        By.CSS_SELECTOR, "#notesList .note-row"
                     )
                 )
+            )
+
+            self.click(
+                '#notesList [data-delete-note="{}"]'.format(note_id)
+            )
+            self.confirm_delete()
+            self.wait.until(
+                lambda driver: not driver.find_elements(
+                    By.CSS_SELECTOR,
+                    '#notesList [data-delete-note="{}"]'.format(note_id),
+                )
+            )
+            note_id = None
+        finally:
+            if note_id:
+                self.api_request("DELETE", "/api/notes/{}".format(note_id))
+            if item_id:
+                self.api_request("DELETE", "/api/items/{}".format(item_id))
+            if file_path and os.path.exists(file_path):
+                os.remove(file_path)
 
 
 if __name__ == "__main__":

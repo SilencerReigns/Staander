@@ -2,12 +2,19 @@ const express = require('express');
 const cors = require('cors');
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const multer = require('multer');
 const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const app = express();
 const PORT = process.env.PORT || 5150;
 const DATA_FILE = path.join(__dirname, 'data.json');
+const JWT_SECRET = process.env.JWT_SECRET || (
+  process.env.NODE_ENV === 'production' ? '' : crypto.randomBytes(32).toString('hex')
+);
+if (!JWT_SECRET) throw new Error('Defina JWT_SECRET no ambiente de produção.');
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const MAX_UPLOAD_MB = Number(process.env.MAX_UPLOAD_MB) || 50;
 const MAX_FILES_PER_IMPORT = 20;
@@ -18,7 +25,7 @@ app.use(cors({ origin: '*', credentials: true }));
 app.use(express.json());
 
 // -------- Persistência simples em JSON --------
-let db = { items: [], tags: [], notes: [] };
+let db = { items: [], tags: [], notes: [], users: [] };
 
 function loadDb() {
   try {
@@ -33,13 +40,161 @@ function loadDb() {
   db.items = db.items || [];
   db.tags = db.tags || [];
   db.notes = db.notes || [];
+  db.users = db.users || [];
+  db.users.forEach((user) => {
+    if (user.role !== 'admin') user.role = 'user';
+  });
+  if (db.users.length === 1) {
+    const usuarioId = db.users[0].id;
+    for (const collectionName of ['items', 'tags', 'notes']) {
+      db[collectionName].forEach((item) => {
+        if (!item.usuarioId) item.usuarioId = usuarioId;
+      });
+    }
+  }
 }
 
 function saveDb() {
   fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
 }
 
+function usuarioPublico(usuario) {
+  return {
+    id: usuario.id,
+    nome: usuario.nome,
+    email: usuario.email,
+    role: usuario.role === 'admin' ? 'admin' : 'user',
+  };
+}
+
 loadDb();
+
+app.post('/api/register', async (req, res) => {
+  try {
+    const { nome, email, senha } = req.body;
+
+    if (typeof nome !== 'string' || typeof email !== 'string' || typeof senha !== 'string' ||
+        !nome.trim() || !email.trim() || !senha) {
+      return res.status(400).json({ error: 'Preencha todos os campos.' });
+    }
+    if (senha.length < 8) {
+      return res.status(400).json({ error: 'A senha deve ter pelo menos 8 caracteres.' });
+    }
+
+    const emailNormalizado = email.trim().toLowerCase();
+    if (db.users.some((user) => user.email === emailNormalizado)) {
+      return res.status(409).json({ error: 'Este email já está cadastrado.' });
+    }
+
+    const novoUsuario = {
+      id: uuidv4(),
+      nome: nome.trim(),
+      email: emailNormalizado,
+      senha: await bcrypt.hash(senha, 10),
+      criadoEm: new Date().toISOString(),
+      role: 'user',
+    };
+
+    if (db.users.length === 0) {
+      for (const collectionName of ['items', 'tags', 'notes']) {
+        db[collectionName].forEach((item) => {
+          if (!item.usuarioId) item.usuarioId = novoUsuario.id;
+        });
+      }
+    }
+
+    db.users.push(novoUsuario);
+    saveDb();
+
+    const token = jwt.sign({ userId: novoUsuario.id }, JWT_SECRET, { expiresIn: '1h' });
+    return res.status(201).json({
+      message: 'Usuário cadastrado com sucesso!',
+      token,
+      user: usuarioPublico(novoUsuario),
+    });
+  } catch (error) {
+    console.error('Erro no cadastro:', error);
+    return res.status(500).json({ error: 'Erro interno ao cadastrar usuário.' });
+  }
+});
+
+app.post('/api/login', async (req, res) => {
+  try {
+    const { email, senha } = req.body;
+    if (typeof email !== 'string' || typeof senha !== 'string' || !email.trim() || !senha) {
+      return res.status(400).json({ error: 'Informe email e senha.' });
+    }
+
+    const emailNormalizado = email.trim().toLowerCase();
+    const usuario = db.users.find((user) => user.email === emailNormalizado);
+    if (!usuario || !(await bcrypt.compare(senha, usuario.senha))) {
+      return res.status(401).json({ error: 'Email ou senha incorretos.' });
+    }
+
+    const token = jwt.sign({ userId: usuario.id }, JWT_SECRET, { expiresIn: '1h' });
+    return res.json({
+      message: 'Login realizado com sucesso!',
+      token,
+      user: usuarioPublico(usuario),
+    });
+  } catch (error) {
+    console.error('Erro no login:', error);
+    return res.status(500).json({ error: 'Erro interno ao realizar login.' });
+  }
+});
+
+function autenticarToken(req, res, next) {
+  const authorization = req.headers.authorization;
+  if (!authorization || !authorization.startsWith('Bearer ')) {
+    return res.status(401).json({ error: 'Token não informado.' });
+  }
+
+  try {
+    const decoded = jwt.verify(authorization.slice(7), JWT_SECRET);
+    const usuario = db.users.find((user) => user.id === decoded.userId);
+    if (!usuario) return res.status(401).json({ error: 'Usuário não encontrado.' });
+    req.usuario = usuario;
+    return next();
+  } catch {
+    return res.status(401).json({ error: 'Token inválido ou expirado.' });
+  }
+}
+
+app.get('/api/me', autenticarToken, (req, res) => {
+  res.json(usuarioPublico(req.usuario));
+});
+
+app.get('/api/admin/progress', autenticarToken, (req, res) => {
+  if (req.usuario.role !== 'admin') {
+    return res.status(403).json({ error: 'Acesso restrito a administradores.' });
+  }
+
+  const usuarios = db.users.map((usuario) => ({
+    ...usuarioPublico(usuario),
+    itens: db.items
+      .filter((item) => item.usuarioId === usuario.id)
+      .map((item) => {
+        const totalPaginas = Number(item.totalPaginas) || 0;
+        const paginasLidas = Math.min(Number(item.maxPagina) || 0, totalPaginas);
+        return {
+          id: item.id,
+          titulo: item.titulo,
+          status: item.status || 'nao_lido',
+          paginasLidas,
+          totalPaginas,
+          percentual: totalPaginas
+            ? Math.round((paginasLidas / totalPaginas) * 100)
+            : null,
+        };
+      }),
+  }));
+
+  res.json({ usuarios });
+});
+
+app.use('/api/items', autenticarToken);
+app.use('/api/tags', autenticarToken);
+app.use('/api/notes', autenticarToken);
 
 // -------- Arquivos importados --------
 // Campos que só o servidor define (o cliente não pode sobrescrevê-los por POST/PUT).
@@ -126,6 +281,7 @@ app.post('/api/items/import', upload.array('arquivos', MAX_FILES_PER_IMPORT), (r
       dataImportacao: agora,
       nomeOriginal: nome,
       arquivo: path.basename(file.path),
+      usuarioId: req.usuario.id,
     };
     db.items.push(item);
     importados.push(item);
@@ -137,7 +293,9 @@ app.post('/api/items/import', upload.array('arquivos', MAX_FILES_PER_IMPORT), (r
 
 // Entrega o arquivo importado (aberto no navegador; use ?download=1 para baixar).
 app.get('/api/items/:id/arquivo', (req, res) => {
-  const item = db.items.find((x) => x.id === req.params.id);
+  const item = db.items.find(
+    (x) => x.id === req.params.id && x.usuarioId === req.usuario.id
+  );
   if (!item || !item.arquivo) return res.status(404).json({ error: 'Arquivo não encontrado' });
 
   const filePath = uploadPath(item.arquivo);
@@ -153,30 +311,42 @@ app.get('/api/items/:id/arquivo', (req, res) => {
 });
 
 // -------- Helpers CRUD genericos --------
-function createRouter(collectionName, { protectedFields = [], onRemove } = {}) {
+function createRouter(collectionName, { protectedFields = [], onRemove, canCreate } = {}) {
   const router = express.Router();
 
   const sanitize = (body) => {
     const clean = { ...body };
     protectedFields.forEach((f) => delete clean[f]);
+    delete clean.usuarioId;
     return clean;
   };
+  const pertenceAoUsuario = (item, usuarioId) => item.usuarioId === usuarioId;
 
   // Listar
   router.get('/', (req, res) => {
-    res.json(db[collectionName]);
+    res.json(db[collectionName].filter((item) => pertenceAoUsuario(item, req.usuario.id)));
   });
 
   // Obter por id
   router.get('/:id', (req, res) => {
-    const item = db[collectionName].find((x) => x.id === req.params.id);
+    const item = db[collectionName].find(
+      (x) => x.id === req.params.id && pertenceAoUsuario(x, req.usuario.id)
+    );
     if (!item) return res.status(404).json({ error: 'Não encontrado' });
     res.json(item);
   });
 
   // Criar
   router.post('/', (req, res) => {
-    const novo = { id: uuidv4(), criadoEm: new Date().toISOString(), ...sanitize(req.body) };
+    if (canCreate && !canCreate(req.body, req.usuario)) {
+      return res.status(404).json({ error: 'Não encontrado' });
+    }
+    const novo = {
+      id: uuidv4(),
+      criadoEm: new Date().toISOString(),
+      ...sanitize(req.body),
+      usuarioId: req.usuario.id,
+    };
     db[collectionName].push(novo);
     saveDb();
     res.status(201).json(novo);
@@ -184,10 +354,20 @@ function createRouter(collectionName, { protectedFields = [], onRemove } = {}) {
 
   // Atualizar
   router.put('/:id', (req, res) => {
-    const idx = db[collectionName].findIndex((x) => x.id === req.params.id);
+    const idx = db[collectionName].findIndex(
+      (x) => x.id === req.params.id && pertenceAoUsuario(x, req.usuario.id)
+    );
     if (idx === -1) return res.status(404).json({ error: 'Não encontrado' });
+    if (canCreate && req.body && req.body.itemId !== undefined && !canCreate(req.body, req.usuario)) {
+      return res.status(404).json({ error: 'Não encontrado' });
+    }
     const atual = db[collectionName][idx];
-    const atualizado = { ...atual, ...sanitize(req.body), id: req.params.id };
+    const atualizado = {
+      ...atual,
+      ...sanitize(req.body),
+      id: req.params.id,
+      usuarioId: atual.usuarioId,
+    };
     protectedFields.forEach((f) => {
       if (atual[f] !== undefined) atualizado[f] = atual[f];
     });
@@ -198,7 +378,9 @@ function createRouter(collectionName, { protectedFields = [], onRemove } = {}) {
 
   // Deletar
   router.delete('/:id', (req, res) => {
-    const idx = db[collectionName].findIndex((x) => x.id === req.params.id);
+    const idx = db[collectionName].findIndex(
+      (x) => x.id === req.params.id && pertenceAoUsuario(x, req.usuario.id)
+    );
     if (idx === -1) return res.status(404).json({ error: 'Não encontrado' });
     const removido = db[collectionName].splice(idx, 1)[0];
     if (onRemove) onRemove(removido);
@@ -217,12 +399,21 @@ app.use(
     onRemove: (item) => {
       if (item.arquivo) removeFileQuietly(uploadPath(item.arquivo));
       // as notas de um arquivo excluído também saem da biblioteca
-      db.notes = db.notes.filter((n) => n.itemId !== item.id);
+      db.notes = db.notes.filter(
+        (n) => n.itemId !== item.id || n.usuarioId !== item.usuarioId
+      );
     },
   })
 );
 app.use('/api/tags', createRouter('tags'));
-app.use('/api/notes', createRouter('notes'));
+app.use(
+  '/api/notes',
+  createRouter('notes', {
+    canCreate: (body, usuario) => Boolean(body && db.items.some(
+      (item) => item.id === body.itemId && item.usuarioId === usuario.id
+    )),
+  })
+);
 
 // -------- Health --------
 app.get('/api/health', (req, res) => {

@@ -7,6 +7,27 @@
 .drop.over{border-color:var(--accent);color:var(--text);background:#8b5cf614}
 .import-status{margin:14px 0 0;min-height:18px;overflow-wrap:anywhere}
 @media(max-width:900px){.reader-pdf{width:100%}}
+
+.sidebar [hidden]{display:none!important}
+.profile{gap:8px}
+.profile-details{flex:1;min-width:0}
+.profile-details b{display:block;font-size:11px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.profile-details small{color:#777e8b}
+.logout-button{border:1px solid var(--line);border-radius:7px;background:transparent;color:#aaa;padding:6px 8px;font-size:10px}
+.logout-button:hover{border-color:var(--accent);color:#fff}
+.admin-users{display:grid;gap:14px}
+.admin-user{padding:20px}
+.admin-user-heading,.admin-progress-heading{display:flex;align-items:center;justify-content:space-between;gap:15px}
+.admin-user-heading{padding-bottom:13px;border-bottom:1px solid var(--line)}
+.admin-user-heading h2{margin:0;font-size:15px}
+.admin-user-heading p,.admin-user-heading>span{margin:4px 0 0;color:var(--muted);font-size:11px}
+.admin-progress-item{padding:14px 0;border-bottom:1px solid var(--line)}
+.admin-progress-item:last-child{border-bottom:0}
+.admin-progress-heading b{font-size:12px}
+.admin-progress-heading span{color:var(--accent2);font-size:10px}
+.admin-progress-item p{margin:7px 0;color:var(--muted);font-size:10px}
+.admin-progress-bar{height:4px;background:#262a33;border-radius:5px;overflow:hidden}
+.admin-progress-bar i{display:block;height:100%;background:var(--accent)}
 .note-modal{width:min(520px,92%)}
 .note-modal h2{margin:0 0 6px}
 .note-form{display:flex;flex-direction:column;gap:6px;margin-top:16px}

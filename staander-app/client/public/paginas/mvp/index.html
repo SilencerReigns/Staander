@@ -20,10 +20,17 @@
       <div class="section-label">STUDIO</div>
       <button class="nav" data-page="studio">▦ <span>Projetos</span></button>
       <button class="nav" data-page="publish">↗ <span>Publish</span></button>
+      <div id="adminDivider" class="divider" hidden></div>
+      <div id="adminLabel" class="section-label" hidden>ADMINISTRAÇÃO</div>
+      <button id="adminNav" class="nav" data-page="admin" hidden>◉ <span>Progresso dos usuários</span></button>
     </nav>
     <div class="sidebar-bottom">
       <button class="nav" data-page="settings">⚙ <span>Configurações</span></button>
-      <div class="profile"><div class="avatar">ET</div><div><b>Meu espaço</b><small>Plano gratuito</small></div></div>
+      <div class="profile">
+        <div id="profileAvatar" class="avatar">--</div>
+        <div class="profile-details"><b id="profileName">Carregando...</b><small>Meu espaço</small></div>
+        <button id="logoutButton" class="logout-button" type="button">Sair</button>
+      </div>
     </div>
   </aside>
 
@@ -31,7 +38,7 @@
     <header class="topbar">
       <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
       <label class="global-search" for="globalSearch">⌕ <input id="globalSearch" type="search" placeholder="Buscar na sua biblioteca..." autocomplete="off" aria-label="Buscar na sua biblioteca"><kbd>Ctrl K</kbd></label>
-      <div class="top-actions"><button title="Notificações">♢</button><button class="avatar small">ET</button></div>
+      <div class="top-actions"><button title="Notificações">♢</button><button id="topAvatar" class="avatar small">--</button></div>
     </header>
 
     <section id="home" class="page active">
@@ -105,6 +112,15 @@
     <section id="settings" class="page">
       <div class="page-head"><div><p class="kicker">CONFIGURAÇÕES</p><h1>Seu Staander.</h1><p class="muted">Preferências e organização do workspace.</p></div></div>
       <div class="panel settings"><label>Nome do workspace<input value="Meu espaço"></label><label>Tema<select><option>Escuro</option><option>Claro</option></select></label><label>Sincronização<div class="toggle on">● Ativa</div></label><label>Backup automático<div class="toggle on">● Ativo</div></label></div>
+    </section>
+
+    <section id="admin" class="page">
+      <div class="page-head">
+        <div><p class="kicker">ADMINISTRAÇÃO</p><h1>Progresso dos usuários.</h1><p class="muted">Acompanhe o status e o avanço de leitura por arquivo.</p></div>
+        <button class="ghost" type="button" onclick="loadAdminProgress()">Atualizar</button>
+      </div>
+      <p id="adminProgressStatus" class="muted" role="status"></p>
+      <div id="adminProgressList" class="admin-users"></div>
     </section>
   </main>
 </div>
