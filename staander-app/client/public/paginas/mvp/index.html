@@ -22,8 +22,15 @@
       <button class="nav" data-page="publish">↗ <span>Publish</span></button>
     </nav>
     <div class="sidebar-bottom">
+      <button id="navAdmin" class="nav admin-nav" data-page="admin" hidden>🛡 <span>Painel Admin</span></button>
       <button class="nav" data-page="settings">⚙ <span>Configurações</span></button>
-      <div class="profile"><div class="avatar">ET</div><div><b>Meu espaço</b><small>Plano gratuito</small></div></div>
+      <div class="profile" onclick="openPage('settings')" role="button" tabindex="0" title="Abrir Meu Espaço">
+        <div id="sidebarAvatar" class="avatar">ET</div>
+        <div class="profile-meta">
+          <b id="sidebarUserName">Meu espaço</b>
+          <small id="sidebarUserPlan">Plano gratuito</small>
+        </div>
+      </div>
     </div>
   </aside>
 
@@ -31,7 +38,14 @@
     <header class="topbar">
       <button class="mobile-menu" onclick="toggleSidebar()">☰</button>
       <label class="global-search" for="globalSearch">⌕ <input id="globalSearch" type="search" placeholder="Buscar na sua biblioteca..." autocomplete="off" aria-label="Buscar na sua biblioteca"><kbd>Ctrl K</kbd></label>
-      <div class="top-actions"><button title="Notificações">♢</button><button class="avatar small">ET</button></div>
+      <div class="top-actions">
+        <div class="top-user-info" onclick="openPage('settings')" title="Ver Meu Espaço">
+          <span id="topAdminBadge" class="studio-badge published" hidden>ADMIN</span>
+          <span id="topUserName" class="top-user-name">Usuário</span>
+          <button type="button" id="topUserAvatar" class="avatar small">ET</button>
+        </div>
+        <button type="button" id="topLogoutBtn" class="logout-btn" onclick="logoutUser()" title="Encerrar sessão">Sair</button>
+      </div>
     </header>
 
     <section id="home" class="page active">
@@ -86,25 +100,184 @@
     </section>
 
     <section id="studio" class="page">
-      <div class="page-head"><div><p class="kicker">STUDIO</p><h1>Crie a partir do seu acervo.</h1><p class="muted">Organize produtos, materiais e projetos sem perder contexto.</p></div><button class="primary" onclick="newProject()">＋ Novo projeto</button></div>
-      <div class="studio-tabs"><button class="tab active">Projetos</button><button class="tab">Produtos</button><button class="tab">Arquivos</button><button class="tab">Referências</button></div>
-      <div class="project-grid">
-        <div class="project-card" onclick="openProject('Research — Inteligência Competitiva')"><span class="project-icon">◈</span><h2>Research — Inteligência Competitiva</h2><p>Pesquisa, referências e materiais de análise.</p><div class="project-foot"><span>18 arquivos</span><span>Atualizado hoje</span></div></div>
-        <div class="project-card"><span class="project-icon">◆</span><h2>Produto — E-book Estratégia</h2><p>Arquivos, capa, bônus e versões do produto.</p><div class="project-foot"><span>9 arquivos</span><span>3 versões</span></div></div>
-        <div class="project-card"><span class="project-icon">◇</span><h2>Novo projeto</h2><p>Comece uma área de trabalho do zero.</p><div class="project-foot"><span>+</span><span>Criar</span></div></div>
+      <div class="page-head">
+        <div>
+          <p class="kicker">STUDIO • PROJETOS</p>
+          <h1>Crie a partir do seu acervo.</h1>
+          <p class="muted">Escreva e salve seus projetos de texto como rascunhos e reabra-os para editar quando quiser antes de publicar.</p>
+        </div>
+        <div class="page-head-actions">
+          <button type="button" class="primary" onclick="startNewStudioProject()">＋ Novo projeto</button>
+        </div>
       </div>
-      <div class="panel"><div class="panel-head"><h2>Estrutura do produto</h2><span class="muted">Produto — E-book Estratégia</span></div><div class="asset-grid"><div><b>📄 Arquivo principal</b><span>ebook_estrategia.pdf</span></div><div><b>🎁 Bônus</b><span>checklist.pdf · planilha.xlsx</span></div><div><b>▣ Capas</b><span>capa_v1.png · capa_final.png</span></div><div><b>↻ Versões</b><span>v1.0 · v1.1 · final</span></div><div><b>⌕ Referências</b><span>14 fontes vinculadas</span></div></div></div>
+      <div class="studio-tabs"><button class="tab active">Projetos</button><button class="tab">Produtos</button><button class="tab">Arquivos</button><button class="tab">Referências</button></div>
+
+      <div id="studioTextPanel" class="panel studio-editor-panel">
+        <div class="panel-head">
+          <div>
+            <p id="studioEditorKicker" class="kicker">NOVO PROJETO</p>
+            <h2 id="studioEditorTitle">Editor de texto simples</h2>
+          </div>
+          <span id="studioEditorStatus" class="muted">Modo criação · texto puro</span>
+        </div>
+        <form id="studioTextForm" class="studio-form" novalidate>
+          <label for="studioFileTitle">Título do projeto</label>
+          <input id="studioFileTitle" type="text" placeholder="Digite o título do seu projeto de texto..." autocomplete="off" required>
+          <label for="studioFileContent">Conteúdo do texto</label>
+          <textarea id="studioFileContent" rows="10" placeholder="Digite livremente o texto do seu projeto aqui (texto simples, sem formatação)..." required></textarea>
+          <p id="studioFeedback" class="studio-feedback" role="status" aria-live="polite"></p>
+          <div class="studio-actions">
+            <button type="button" id="studioResetBtn" class="ghost" onclick="startNewStudioProject()">Novo / Limpar</button>
+            <button type="submit" id="studioSaveBtn" class="primary">Salvar em Projetos</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="kicker">SEUS RASCUNHOS E PROJETOS</p>
+            <h2>Projetos salvos</h2>
+          </div>
+          <span id="studioTextCount" class="muted">0 projetos</span>
+        </div>
+        <div id="studioTextList" class="studio-text-list"></div>
+      </div>
     </section>
 
     <section id="publish" class="page">
-      <div class="page-head"><div><p class="kicker">PUBLISH</p><h1>Pronto para publicar.</h1><p class="muted">Empacote seu projeto e prepare uma experiência de entrega.</p></div><button class="primary" onclick="alert('Publicação criada em modo demonstração')">＋ Nova publicação</button></div>
-      <div class="publish-flow"><div class="publish-step active"><b>01</b><strong>Conteúdo</strong><span>Arquivos e versões</span></div><div class="publish-step"><b>02</b><strong>Experiência</strong><span>Página e entrega</span></div><div class="publish-step"><b>03</b><strong>Publicação</strong><span>Revisão e lançamento</span></div></div>
-      <div class="panel publish-panel"><div class="publish-preview"><div class="fake-cover">ESTRATÉGIA<br><small>Um guia prático</small></div></div><div class="publish-info"><p class="kicker">PUBLICAÇÃO RASCUNHO</p><h2>E-book Estratégia</h2><label>Título</label><input value="Estratégia: um guia prático"><label>Descrição</label><textarea>Um material organizado a partir do projeto, com conteúdo principal e materiais complementares.</textarea><label>Arquivos incluídos</label><div class="included">✓ ebook_estrategia.pdf &nbsp; ✓ checklist.pdf &nbsp; ✓ planilha.xlsx</div><button class="primary" onclick="alert('Rascunho salvo')">Salvar rascunho</button></div></div>
+      <div class="page-head">
+        <div>
+          <p class="kicker">STUDIO • PUBLISH</p>
+          <h1>Pronto para publicar.</h1>
+          <p class="muted">Selecione um arquivo importado ou um projeto de texto do Studio, defina título, descrição e capa, e publique na Biblioteca.</p>
+        </div>
+        <button type="button" class="primary" onclick="savePublishFile()">↗ Publicar na Biblioteca</button>
+      </div>
+      <div class="publish-flow">
+        <div class="publish-step active" data-step="1" onclick="setPublishStep(1)"><b>01</b><strong>Origem</strong><span>Arquivo importado ou projeto do Studio</span></div>
+        <div class="publish-step" data-step="2" onclick="setPublishStep(2)"><b>02</b><strong>Metadados & Capa</strong><span>Título, descrição e imagem de capa</span></div>
+        <div class="publish-step" data-step="3" onclick="setPublishStep(3)"><b>03</b><strong>Biblioteca</strong><span>Publicação disponível no acervo</span></div>
+      </div>
+      <div class="panel publish-panel">
+        <div class="publish-preview">
+          <div id="publishCover" class="fake-cover">ESTRATÉGIA<br><small>Um guia prático</small></div>
+          <p id="publishPreviewMeta" class="muted publish-preview-meta">Selecione um item para visualizar a capa e publicar na Biblioteca.</p>
+        </div>
+        <div class="publish-info">
+          <p id="publishStatusKicker" class="kicker">CONFIGURAÇÃO DE PUBLICAÇÃO</p>
+          <h2 id="publishHeading">Selecione um arquivo ou projeto</h2>
+
+          <label for="publishFileSelect">Arquivo importado ou Projeto criado em Projetos</label>
+          <select id="publishFileSelect">
+            <option value="">Selecione um arquivo ou projeto...</option>
+          </select>
+          <div id="publishFileList" class="publish-file-list" aria-label="Itens disponíveis para publicação"></div>
+
+          <form id="publishEditForm" class="publish-edit-form" novalidate>
+            <label for="publishTitle">Título</label>
+            <input id="publishTitle" type="text" placeholder="Digite o título para exibição na Biblioteca..." autocomplete="off">
+
+            <label for="publishDescription">Descrição</label>
+            <textarea id="publishDescription" rows="4" placeholder="Escreva uma descrição para o arquivo ou projeto..."></textarea>
+
+            <label for="publishCoverInput">Capa do arquivo (imagem)</label>
+            <div class="publish-cover-upload">
+              <input id="publishCoverInput" type="file" accept="image/*">
+              <button type="button" id="publishClearCoverBtn" class="ghost" onclick="clearPublishCover()" hidden>Remover capa</button>
+            </div>
+            <small id="publishCoverHint" class="muted publish-cover-hint">Envie uma imagem (PNG, JPG, WEBP) do seu computador para usar como capa.</small>
+
+            <label>Resumo do item selecionado</label>
+            <div id="publishIncluded" class="included">Nenhum arquivo ou projeto selecionado.</div>
+
+            <p id="publishFeedback" class="studio-feedback" role="status" aria-live="polite"></p>
+
+            <div class="publish-actions">
+              <button type="submit" id="publishSaveBtn" class="primary">Publicar / Salvar Alterações</button>
+            </div>
+          </form>
+        </div>
+      </div>
     </section>
 
     <section id="settings" class="page">
-      <div class="page-head"><div><p class="kicker">CONFIGURAÇÕES</p><h1>Seu Staander.</h1><p class="muted">Preferências e organização do workspace.</p></div></div>
-      <div class="panel settings"><label>Nome do workspace<input value="Meu espaço"></label><label>Tema<select><option>Escuro</option><option>Claro</option></select></label><label>Sincronização<div class="toggle on">● Ativa</div></label><label>Backup automático<div class="toggle on">● Ativo</div></label></div>
+      <div class="page-head">
+        <div>
+          <p class="kicker">MEU ESPAÇO & CONFIGURAÇÕES</p>
+          <h1 id="profileGreetingTitle">Meu espaço.</h1>
+          <p class="muted">Perfil do usuário autenticado e preferências do workspace.</p>
+        </div>
+        <button type="button" class="danger" onclick="logoutUser()">Sair da conta</button>
+      </div>
+
+      <div class="panel profile-panel">
+        <div class="profile-card-main">
+          <div id="profileAvatar" class="avatar large">ET</div>
+          <div class="profile-card-details">
+            <div class="studio-text-head">
+              <h2 id="profileName">Usuário Staander</h2>
+              <span id="profileRoleBadge" class="studio-badge draft">Usuário</span>
+            </div>
+            <p id="profileEmail" class="muted">usuario@staander.com</p>
+            <small id="profileSince" class="muted">Sessão ativa</small>
+          </div>
+        </div>
+        <div class="stats profile-stats">
+          <div class="stat"><span>Biblioteca</span><strong id="profileBookCount">0</strong><small>publicações e PDFs</small></div>
+          <div class="stat"><span>Projetos</span><strong id="profileProjectCount">0</strong><small>textos no Studio</small></div>
+          <div class="stat"><span>Notas</span><strong id="profileNoteCount">0</strong><small>anotações criadas</small></div>
+          <div class="stat"><span>Plano</span><strong id="profilePlanLabel">Gratuito</strong><small>conta ativa</small></div>
+        </div>
+      </div>
+
+      <div class="panel settings"><label>Nome do workspace<input id="workspaceNameInput" value="Meu espaço"></label><label>Tema<select><option>Escuro</option><option>Claro</option></select></label><label>Sincronização<div class="toggle on">● Ativa</div></label><label>Backup automático<div class="toggle on">● Ativo</div></label></div>
+    </section>
+
+    <section id="admin" class="page">
+      <div class="page-head">
+        <div>
+          <p class="kicker">ADMINISTRAÇÃO • ACESSO EXCLUSIVO</p>
+          <h1>Painel do Administrador.</h1>
+          <p class="muted">Visualize todos os usuários cadastrados e acompanhe projetos criados, arquivos importados, publicações e atividades recentes.</p>
+        </div>
+        <button type="button" class="primary" onclick="loadAdminOverview()">↻ Atualizar painel</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><span>Usuários</span><strong id="adminUserCount">0</strong><small>contas cadastradas</small></div>
+        <div class="stat"><span>Projetos Studio</span><strong id="adminProjectCount">0</strong><small>rascunhos e textos criados</small></div>
+        <div class="stat"><span>Arquivos Importados</span><strong id="adminImportCount">0</strong><small>PDFs enviados</small></div>
+        <div class="stat"><span>Publicações</span><strong id="adminPublishCount">0</strong><small>itens na Biblioteca</small></div>
+      </div>
+
+      <div class="grid two admin-grid">
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Usuários cadastrados</h2>
+            <button type="button" id="adminShowAllBtn" class="link" onclick="selectAdminUser('')">Ver todos →</button>
+          </div>
+          <div id="adminUsersList" class="admin-users-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>Atividades recentes da plataforma</h2>
+            <span id="adminActivityFilterLabel" class="muted">Todos os usuários</span>
+          </div>
+          <div id="adminGlobalActivities" class="admin-activities-list"></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div>
+            <p class="kicker">ACOMPANHAMENTO DETALHADO POR USUÁRIO</p>
+            <h2 id="adminDetailTitle">Visão consolidada dos usuários</h2>
+          </div>
+          <span id="adminDetailSubtitle" class="muted">Clique em um usuário acima para filtrar ou acompanhe todos abaixo</span>
+        </div>
+        <div id="adminUserDetail" class="admin-user-detail"></div>
+      </div>
     </section>
   </main>
 </div>

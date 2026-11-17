@@ -314,3 +314,126 @@ a.btn-sm {
   .crud-intro { padding-top: 26px; }
   .crud-section .section-card { padding: 20px 16px; overflow-x: auto; }
 }
+
+/* AUTENTICAÇÃO */
+
+.auth-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background:
+    radial-gradient(
+      ellipse at 50% 35%,
+      rgba(139, 92, 246, 0.13),
+      transparent 48%
+    ),
+    var(--bg);
+}
+
+.auth-card {
+  width: min(100%, 390px);
+  padding: 38px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
+}
+
+.auth-brand {
+  text-align: center;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 850;
+  letter-spacing: -1.8px;
+  color: var(--text);
+}
+
+.auth-brand span {
+  color: var(--accent2);
+}
+
+.auth-subtitle {
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+  margin: 12px 0 32px;
+}
+
+.auth-field {
+  margin-bottom: 18px;
+}
+
+.auth-field label {
+  display: block;
+  color: #c7c9d1;
+  font-size: 11px;
+  font-weight: 650;
+  margin-bottom: 8px;
+}
+
+.auth-field input {
+  width: 100%;
+  background: #0d0f14;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 13px;
+  outline: none;
+  font-size: 13px;
+}
+
+.auth-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.13);
+}
+
+.auth-message {
+  min-height: 16px;
+  margin: 0 0 8px;
+  color: #fca5a5;
+  font-size: 11px;
+}
+
+.auth-submit {
+  width: 100%;
+  margin-top: 5px;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--accent);
+  color: white;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.auth-submit:hover {
+  background: var(--accent2);
+}
+
+.auth-submit:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.auth-switch {
+  margin-top: 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.auth-switch button {
+  border: none;
+  background: transparent;
+  color: var(--accent2);
+  cursor: pointer;
+  font-weight: 650;
+}
+
+@media (max-width: 480px) {
+  .auth-card {
+    padding: 30px 24px;
+  }
+}

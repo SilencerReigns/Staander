@@ -131,8 +131,9 @@ export function ItemCrud() {
         </div>
         <div className="form-row">
           <label>Tipo</label>
-          <select required value={draft.tipo || 'PDF'} onChange={(e) => setDraft({ ...draft, tipo: e.target.value as any })}>
+          <select required value={draft.tipo || 'PDF'} onChange={(e) => setDraft({ ...draft, tipo: e.target.value as Item['tipo'] })}>
             <option value="PDF">PDF</option>
+            <option value="TXT">TXT</option>
             <option value="EPUB">EPUB</option>
             <option value="OUTRO">Outro</option>
           </select>
