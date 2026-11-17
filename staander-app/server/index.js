@@ -22,10 +22,14 @@ const MAX_FILES_PER_IMPORT = 20;
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
 app.use(cors({ origin: '*', credentials: true }));
-app.use(express.json());
+app.use(express.json({ limit: '15mb' }));
 
 // -------- Persistência simples em JSON --------
-let db = { items: [], tags: [], notes: [], users: [] };
+let db = { items: [], tags: [], notes: [], users: [], activities: [] };
+
+function saveDb() {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
+}
 
 function loadDb() {
   try {
@@ -41,6 +45,7 @@ function loadDb() {
   db.tags = db.tags || [];
   db.notes = db.notes || [];
   db.users = db.users || [];
+  db.activities = db.activities || [];
   db.users.forEach((user) => {
     if (user.role !== 'admin') user.role = 'user';
   });
@@ -48,15 +53,13 @@ function loadDb() {
     const usuarioId = db.users[0].id;
     for (const collectionName of ['items', 'tags', 'notes']) {
       db[collectionName].forEach((item) => {
-        if (!item.usuarioId) item.usuarioId = usuarioId;
+        if (!item.usuarioId) item.usuarioId = item.userId || usuarioId;
       });
     }
   }
 }
 
-function saveDb() {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(db, null, 2));
-}
+loadDb();
 
 function usuarioPublico(usuario) {
   return {
@@ -64,10 +67,29 @@ function usuarioPublico(usuario) {
     nome: usuario.nome,
     email: usuario.email,
     role: usuario.role === 'admin' ? 'admin' : 'user',
+    plano: usuario.role === 'admin' ? 'Administrador' : usuario.plano || 'Plano gratuito',
+    criadoEm: usuario.criadoEm,
+    ultimoAcessoEm: usuario.ultimoAcessoEm,
   };
 }
 
-loadDb();
+function logActivity(user, tipo, descricao, meta = {}) {
+  const entry = {
+    id: uuidv4(),
+    userId: user ? user.id : meta.userId || null,
+    userName: user ? user.nome : meta.userName || 'Usuário',
+    userEmail: user ? user.email : meta.userEmail || '',
+    tipo,
+    descricao,
+    criadoEm: new Date().toISOString(),
+    ...meta,
+  };
+  db.activities.push(entry);
+  if (db.activities.length > 500) {
+    db.activities = db.activities.slice(-500);
+  }
+  return entry;
+}
 
 app.post('/api/register', async (req, res) => {
   try {
@@ -93,6 +115,7 @@ app.post('/api/register', async (req, res) => {
       senha: await bcrypt.hash(senha, 10),
       criadoEm: new Date().toISOString(),
       role: 'user',
+      plano: 'Plano gratuito',
     };
 
     if (db.users.length === 0) {
@@ -104,6 +127,7 @@ app.post('/api/register', async (req, res) => {
     }
 
     db.users.push(novoUsuario);
+    logActivity(novoUsuario, 'cadastro', `Cadastrou-se na plataforma (${novoUsuario.email})`);
     saveDb();
 
     const token = jwt.sign({ userId: novoUsuario.id }, JWT_SECRET, { expiresIn: '1h' });
@@ -130,6 +154,10 @@ app.post('/api/login', async (req, res) => {
     if (!usuario || !(await bcrypt.compare(senha, usuario.senha))) {
       return res.status(401).json({ error: 'Email ou senha incorretos.' });
     }
+
+    usuario.ultimoAcessoEm = new Date().toISOString();
+    logActivity(usuario, 'login', 'Iniciou sessão no Staander');
+    saveDb();
 
     const token = jwt.sign({ userId: usuario.id }, JWT_SECRET, { expiresIn: '1h' });
     return res.json({
@@ -158,6 +186,13 @@ function autenticarToken(req, res, next) {
   } catch {
     return res.status(401).json({ error: 'Token inválido ou expirado.' });
   }
+}
+
+function verificarAdmin(req, res, next) {
+  if (!req.usuario || req.usuario.role !== 'admin') {
+    return res.status(403).json({ error: 'Acesso restrito a administradores.' });
+  }
+  return next();
 }
 
 app.get('/api/me', autenticarToken, (req, res) => {
@@ -270,33 +305,57 @@ app.post('/api/items/import', upload.array('arquivos', MAX_FILES_PER_IMPORT), (r
     }
 
     const agora = new Date().toISOString();
+    const titulo = nome.replace(/\.pdf$/i, '').trim() || 'Sem título';
     const item = {
       id: uuidv4(),
       criadoEm: agora,
-      titulo: nome.replace(/\.pdf$/i, '').trim() || 'Sem título',
+      titulo,
       tipo: 'PDF',
       tamanho: formatSize(file.size),
       tamanhoBytes: file.size,
       status: 'nao_lido',
+      naBiblioteca: true,
       dataImportacao: agora,
       nomeOriginal: nome,
       arquivo: path.basename(file.path),
       usuarioId: req.usuario.id,
+      userId: req.usuario.id,
+      userName: req.usuario.nome,
+      userEmail: req.usuario.email,
     };
     db.items.push(item);
     importados.push(item);
+    logActivity(req.usuario, 'importacao', `Importou o arquivo PDF “${titulo}” (${item.tamanho})`, {
+      itemId: item.id,
+      itemTitulo: titulo,
+    });
   }
 
   if (importados.length > 0) saveDb();
   res.status(importados.length > 0 ? 201 : 422).json({ importados, rejeitados });
 });
 
-// Entrega o arquivo importado (aberto no navegador; use ?download=1 para baixar).
+// Entrega o arquivo importado ou de texto criado no Studio (aberto no navegador; use ?download=1 para baixar).
 app.get('/api/items/:id/arquivo', (req, res) => {
   const item = db.items.find(
     (x) => x.id === req.params.id && x.usuarioId === req.usuario.id
   );
-  if (!item || !item.arquivo) return res.status(404).json({ error: 'Arquivo não encontrado' });
+  if (!item || (!item.arquivo && typeof item.conteudo !== 'string')) {
+    return res.status(404).json({ error: 'Arquivo não encontrado' });
+  }
+
+  const isTxt = item.tipo === 'TXT' || typeof item.conteudo === 'string' || /\.txt$/i.test(item.arquivo || '');
+  if (isTxt) {
+    const nome = item.nomeOriginal || `${item.titulo || 'arquivo'}.txt`;
+    const disposition = req.query.download ? 'attachment' : 'inline';
+    res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+    res.setHeader('Content-Disposition', `${disposition}; filename*=UTF-8''${encodeURIComponent(nome)}`);
+    if (item.arquivo) {
+      const txtPath = uploadPath(item.arquivo);
+      if (fs.existsSync(txtPath)) return res.sendFile(txtPath);
+    }
+    return res.send(item.conteudo || '');
+  }
 
   const filePath = uploadPath(item.arquivo);
   if (!fs.existsSync(filePath)) {
@@ -311,13 +370,19 @@ app.get('/api/items/:id/arquivo', (req, res) => {
 });
 
 // -------- Helpers CRUD genericos --------
-function createRouter(collectionName, { protectedFields = [], onRemove, canCreate } = {}) {
+function createRouter(
+  collectionName,
+  { protectedFields = [], beforeCreate, beforeUpdate, onRemove, canCreate } = {}
+) {
   const router = express.Router();
 
   const sanitize = (body) => {
     const clean = { ...body };
     protectedFields.forEach((f) => delete clean[f]);
     delete clean.usuarioId;
+    delete clean.userId;
+    delete clean.userName;
+    delete clean.userEmail;
     return clean;
   };
   const pertenceAoUsuario = (item, usuarioId) => item.usuarioId === usuarioId;
@@ -341,12 +406,19 @@ function createRouter(collectionName, { protectedFields = [], onRemove, canCreat
     if (canCreate && !canCreate(req.body, req.usuario)) {
       return res.status(404).json({ error: 'Não encontrado' });
     }
-    const novo = {
+    const userFields = {
+      userId: req.usuario.id,
+      userName: req.usuario.nome,
+      userEmail: req.usuario.email,
+    };
+    let novo = {
       id: uuidv4(),
       criadoEm: new Date().toISOString(),
       ...sanitize(req.body),
       usuarioId: req.usuario.id,
+      ...userFields,
     };
+    if (beforeCreate) novo = beforeCreate(novo, req.body, req.usuario);
     db[collectionName].push(novo);
     saveDb();
     res.status(201).json(novo);
@@ -362,15 +434,19 @@ function createRouter(collectionName, { protectedFields = [], onRemove, canCreat
       return res.status(404).json({ error: 'Não encontrado' });
     }
     const atual = db[collectionName][idx];
-    const atualizado = {
+    let atualizado = {
       ...atual,
       ...sanitize(req.body),
       id: req.params.id,
       usuarioId: atual.usuarioId,
+      userId: atual.userId || atual.usuarioId,
+      userName: atual.userName || req.usuario.nome,
+      userEmail: atual.userEmail || req.usuario.email,
     };
     protectedFields.forEach((f) => {
       if (atual[f] !== undefined) atualizado[f] = atual[f];
     });
+    if (beforeUpdate) atualizado = beforeUpdate(atualizado, atual, req.body, req.usuario);
     db[collectionName][idx] = atualizado;
     saveDb();
     res.json(atualizado);
@@ -383,7 +459,7 @@ function createRouter(collectionName, { protectedFields = [], onRemove, canCreat
     );
     if (idx === -1) return res.status(404).json({ error: 'Não encontrado' });
     const removido = db[collectionName].splice(idx, 1)[0];
-    if (onRemove) onRemove(removido);
+    if (onRemove) onRemove(removido, req.usuario);
     saveDb();
     res.json({ message: 'Removido com sucesso', item: removido });
   });
@@ -396,12 +472,147 @@ app.use(
   '/api/items',
   createRouter('items', {
     protectedFields: PROTECTED_ITEM_FIELDS,
-    onRemove: (item) => {
+    beforeCreate: (novo, body = {}, usuario) => {
+      if (typeof body.conteudo === 'string' || body.tipo === 'TXT') {
+        const titulo = String(body.titulo || '').trim() || 'Sem título';
+        const conteudo = String(body.conteudo ?? '');
+        const descricao = typeof body.descricao === 'string' ? body.descricao.trim() : '';
+        const tamanhoBytes = Buffer.byteLength(conteudo, 'utf8');
+        const arquivo = `${novo.id}.txt`;
+        try {
+          fs.writeFileSync(uploadPath(arquivo), conteudo, 'utf8');
+        } catch (e) {
+          console.warn('Não foi possível gravar arquivo de texto em disco:', e.message);
+        }
+        const naBiblioteca = Boolean(body.naBiblioteca);
+        logActivity(
+          usuario,
+          naBiblioteca ? 'publicacao' : 'projeto_criado',
+          naBiblioteca
+            ? `Criou e publicou o arquivo de texto “${titulo}” na Biblioteca`
+            : `Criou o projeto de texto “${titulo}” na aba Projetos`,
+          { itemId: novo.id, itemTitulo: titulo }
+        );
+        return {
+          ...novo,
+          titulo,
+          conteudo,
+          descricao,
+          capa: typeof body.capa === 'string' ? body.capa : undefined,
+          naBiblioteca,
+          tipo: 'TXT',
+          tamanho: formatSize(tamanhoBytes),
+          tamanhoBytes,
+          status: body.status || 'nao_lido',
+          dataImportacao: novo.criadoEm,
+          totalPaginas: 1,
+          nomeOriginal: /\.txt$/i.test(titulo) ? titulo : `${titulo}.txt`,
+          arquivo,
+        };
+      }
+      logActivity(usuario, 'item_criado', `Cadastrou o item “${novo.titulo || 'Sem título'}”`, {
+        itemId: novo.id,
+      });
+      return {
+        ...novo,
+        naBiblioteca: body.naBiblioteca !== undefined ? Boolean(body.naBiblioteca) : true,
+      };
+    },
+    beforeUpdate: (atualizado, atual, body = {}, usuario) => {
+      const agora = new Date().toISOString();
+      const titulo =
+        body.titulo !== undefined
+          ? String(body.titulo).trim() || atual.titulo || 'Sem título'
+          : atual.titulo || 'Sem título';
+      const descricao =
+        typeof body.descricao === 'string'
+          ? body.descricao.trim()
+          : typeof atual.descricao === 'string'
+          ? atual.descricao
+          : '';
+      const capa = body.capa !== undefined ? body.capa : atual.capa;
+      const naBiblioteca =
+        body.naBiblioteca !== undefined
+          ? Boolean(body.naBiblioteca)
+          : atual.naBiblioteca !== undefined
+          ? Boolean(atual.naBiblioteca)
+          : atual.tipo !== 'TXT';
+      const publicadoEm =
+        body.naBiblioteca === true && !atual.publicadoEm
+          ? agora
+          : body.publicadoEm || atual.publicadoEm;
+
+      // Registra atividades relevantes (publicação, edição de projeto, leitura)
+      if (body.naBiblioteca === true && (!atual.naBiblioteca || body.publicadoEm)) {
+        logActivity(
+          usuario,
+          'publicacao',
+          `Publicou/atualizou “${titulo}” na Biblioteca${capa ? ' (com capa personalizada)' : ''}`,
+          { itemId: atual.id, itemTitulo: titulo }
+        );
+      } else if (typeof body.conteudo === 'string' && body.naBiblioteca !== true) {
+        logActivity(usuario, 'projeto_editado', `Editou o rascunho de projeto “${titulo}” em Projetos`, {
+          itemId: atual.id,
+          itemTitulo: titulo,
+        });
+      } else if (body.paginaAtual && body.paginaAtual !== atual.paginaAtual) {
+        logActivity(
+          usuario,
+          'leitura',
+          `Leu “${titulo}” (página ${body.paginaAtual} de ${body.totalPaginas || atual.totalPaginas || 1})`,
+          { itemId: atual.id, itemTitulo: titulo }
+        );
+      }
+
+      const isTxt =
+        typeof body.conteudo === 'string' ||
+        atual.tipo === 'TXT' ||
+        typeof atual.conteudo === 'string';
+      if (isTxt) {
+        const conteudo =
+          typeof body.conteudo === 'string' ? body.conteudo : String(atual.conteudo ?? '');
+        const tamanhoBytes = Buffer.byteLength(conteudo, 'utf8');
+        const arquivo =
+          atual.arquivo && /\.txt$/i.test(atual.arquivo) ? atual.arquivo : `${atual.id}.txt`;
+        try {
+          fs.writeFileSync(uploadPath(arquivo), conteudo, 'utf8');
+        } catch (e) {
+          console.warn('Não foi possível atualizar arquivo de texto em disco:', e.message);
+        }
+        return {
+          ...atualizado,
+          titulo,
+          conteudo,
+          descricao,
+          capa,
+          naBiblioteca,
+          publicadoEm,
+          tipo: atual.tipo || 'TXT',
+          tamanho: formatSize(tamanhoBytes),
+          tamanhoBytes,
+          nomeOriginal: /\.txt$/i.test(titulo) ? titulo : `${titulo}.txt`,
+          arquivo,
+          atualizadoEm: agora,
+          totalPaginas: atualizado.totalPaginas || 1,
+        };
+      }
+      return {
+        ...atualizado,
+        titulo,
+        descricao,
+        capa,
+        naBiblioteca,
+        publicadoEm,
+        atualizadoEm: agora,
+      };
+    },
+    onRemove: (item, usuario) => {
       if (item.arquivo) removeFileQuietly(uploadPath(item.arquivo));
       // as notas de um arquivo excluído também saem da biblioteca
       db.notes = db.notes.filter(
         (n) => n.itemId !== item.id || n.usuarioId !== item.usuarioId
       );
+      logActivity(usuario, 'exclusao', `Removeu “${item.titulo || 'item'}”`, { itemId: item.id });
     },
   })
 );
@@ -409,15 +620,106 @@ app.use('/api/tags', createRouter('tags'));
 app.use(
   '/api/notes',
   createRouter('notes', {
-    canCreate: (body, usuario) => Boolean(body && db.items.some(
-      (item) => item.id === body.itemId && item.usuarioId === usuario.id
-    )),
+    canCreate: (body, usuario) =>
+      Boolean(
+        body &&
+          db.items.some(
+            (item) => item.id === body.itemId && item.usuarioId === usuario.id
+          )
+      ),
+    beforeCreate: (novo, _body, usuario) => {
+      const targetItem = db.items.find(
+        (item) => item.id === novo.itemId && item.usuarioId === usuario.id
+      );
+      logActivity(
+        usuario,
+        'nota',
+        `Criou uma nota em “${targetItem ? targetItem.titulo : 'arquivo'}”: “${String(novo.conteudo || '').slice(0, 60)}”`,
+        { itemId: novo.itemId, noteId: novo.id }
+      );
+      return novo;
+    },
+    onRemove: (nota, usuario) => {
+      logActivity(usuario, 'exclusao_nota', `Excluiu uma nota: “${String(nota.conteudo || '').slice(0, 50)}”`);
+    },
   })
 );
 
+// -------- PAINEL EXCLUSIVO DO ADMINISTRADOR --------
+app.get('/api/admin/overview', autenticarToken, verificarAdmin, (_req, res) => {
+  const isTxt = (item) =>
+    item && (item.tipo === 'TXT' || typeof item.conteudo === 'string' || /\.txt$/i.test(item.arquivo || ''));
+
+  const usuarios = db.users.map((u) => {
+    const userItems = db.items.filter((item) => item.usuarioId === u.id);
+    const projetosCriados = userItems.filter(isTxt);
+    const arquivosImportados = userItems
+      .filter((item) => !isTxt(item) && item.arquivo)
+      .map((item) => {
+        const totalPaginas = Number(item.totalPaginas) || 0;
+        const paginasLidas = Math.min(Number(item.maxPagina) || 0, totalPaginas);
+        return {
+          ...item,
+          paginasLidas,
+          percentual: totalPaginas
+            ? Math.round((paginasLidas / totalPaginas) * 100)
+            : null,
+        };
+      });
+    const publicacoesBiblioteca = userItems.filter((i) =>
+      isTxt(i) ? i.naBiblioteca === true : Boolean(i.arquivo && i.naBiblioteca !== false)
+    );
+    const notas = db.notes.filter((note) => note.usuarioId === u.id);
+    const atividadesRecentes = db.activities
+      .filter((a) => a.userId === u.id || (a.userEmail && a.userEmail === u.email))
+      .slice()
+      .sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm))
+      .slice(0, 25);
+
+    return {
+      ...usuarioPublico(u),
+      projetosCriados,
+      arquivosImportados,
+      publicacoesBiblioteca,
+      notas,
+      atividadesRecentes,
+    };
+  });
+
+  const todosProjetos = db.items.filter(isTxt);
+  const todosImportados = db.items.filter((i) => !isTxt(i) && i.arquivo);
+  const todasPublicacoes = db.items.filter((i) =>
+    isTxt(i) ? i.naBiblioteca === true : Boolean(i.arquivo && i.naBiblioteca !== false)
+  );
+  const atividadesGlobais = db.activities
+    .slice()
+    .sort((a, b) => new Date(b.criadoEm) - new Date(a.criadoEm))
+    .slice(0, 60);
+
+  res.json({
+    resumo: {
+      totalUsuarios: db.users.length,
+      totalProjetos: todosProjetos.length,
+      totalImportados: todosImportados.length,
+      totalPublicacoes: todasPublicacoes.length,
+      totalNotas: db.notes.length,
+    },
+    usuarios,
+    todosItens: db.items,
+    todasNotas: db.notes,
+    atividadesGlobais,
+  });
+});
+
 // -------- Health --------
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', itens: db.items.length, tags: db.tags.length, notas: db.notes.length });
+  res.json({
+    status: 'ok',
+    itens: db.items.length,
+    tags: db.tags.length,
+    notas: db.notes.length,
+    usuarios: db.users.length,
+  });
 });
 
 // -------- Erros (upload grande demais, excesso de arquivos etc.) --------

@@ -27,8 +27,8 @@ from selenium.webdriver.support.ui import Select, WebDriverWait
 
 
 BASE_URL = os.environ.get("STAANDER_BASE_URL", "http://localhost:5173")
-WAIT_SECONDS = 20
-ACTION_DELAY = max(0.0, float(os.environ.get("STAANDER_ACTION_DELAY", "0.4")))
+WAIT_SECONDS = 5
+ACTION_DELAY = max(0.0, float(os.environ.get("STAANDER_ACTION_DELAY", "0")))
 HEADLESS = os.environ.get("STAANDER_HEADLESS", "1").strip().lower() not in (
     "0",
     "false",
@@ -65,7 +65,7 @@ class StaanderE2ETests(unittest.TestCase):
             cls.driver.quit()
 
     @classmethod
-    def pause(cls):
+    def pause_setup(cls):
         time.sleep(cls.action_delay)
 
     @classmethod
@@ -73,14 +73,14 @@ class StaanderE2ETests(unittest.TestCase):
         cls.driver.get(BASE_URL)
         cls.wait.until(EC.visibility_of_element_located((By.ID, "auth-email")))
         cls.driver.find_element(By.CSS_SELECTOR, ".auth-switch button").click()
-        cls.pause()
+        cls.pause_setup()
         cls.wait.until(EC.visibility_of_element_located((By.ID, "auth-nome")))
         cls.driver.find_element(By.ID, "auth-nome").send_keys(cls.account_name)
-        cls.pause()
+        cls.pause_setup()
         cls.driver.find_element(By.ID, "auth-email").send_keys(cls.account_email)
-        cls.pause()
+        cls.pause_setup()
         cls.driver.find_element(By.ID, "auth-senha").send_keys(cls.account_password)
-        cls.pause()
+        cls.pause_setup()
         cls.driver.find_element(By.CSS_SELECTOR, ".auth-submit").click()
         cls.switch_to_mvp(cls.account_name)
 
@@ -108,7 +108,7 @@ class StaanderE2ETests(unittest.TestCase):
         )
         cls.driver.switch_to.frame(frame)
         cls.wait.until(
-            lambda driver: driver.find_element(By.ID, "profileName").text
+            lambda driver: driver.find_element(By.ID, "sidebarUserName").text
             == expected_name
         )
 
@@ -158,7 +158,7 @@ class StaanderE2ETests(unittest.TestCase):
             )
         )
         self.wait.until(
-            lambda driver: driver.find_element(By.ID, "profileName").text
+            lambda driver: driver.find_element(By.ID, "sidebarUserName").text
             == self.account_name
         )
 
@@ -251,10 +251,11 @@ class StaanderE2ETests(unittest.TestCase):
         self.assertEqual(profile["status"], 200)
         self.assertEqual(profile["body"]["id"], self.account_id)
         self.assertEqual(profile["body"]["role"], "user")
-        self.assertFalse(self.driver.find_element(By.ID, "adminNav").is_displayed())
+        self.assertFalse(self.driver.find_element(By.ID, "navAdmin").is_displayed())
         self.assertEqual(
-            self.api_request("GET", "/api/admin/progress")["status"], 403
+            self.api_request("GET", "/api/admin/overview")["status"], 403
         )
+        self.assertEqual(self.api_request("GET", "/api/admin/progress")["status"], 403)
 
         self.click("#logoutButton")
         self.driver.switch_to.default_content()
@@ -263,7 +264,7 @@ class StaanderE2ETests(unittest.TestCase):
         self.login()
         self.enter_mvp()
         self.assertEqual(
-            self.driver.find_element(By.ID, "profileName").text,
+            self.driver.find_element(By.ID, "sidebarUserName").text,
             self.account_name,
         )
 

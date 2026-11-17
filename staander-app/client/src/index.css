@@ -321,7 +321,13 @@ a.btn-sm {
   align-items: center;
   justify-content: center;
   padding: 24px;
-  background: radial-gradient(circle at top, #181323 0, #08090c 50%);
+  background:
+    radial-gradient(
+      ellipse at 50% 35%,
+      rgba(139, 92, 246, 0.13),
+      transparent 48%
+    ),
+    var(--bg);
 }
 
 .auth-card {
@@ -329,26 +335,28 @@ a.btn-sm {
   padding: 38px;
   background: var(--surface);
   border: 1px solid var(--line);
-  border-radius: 22px;
-  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.4);
+  border-radius: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28);
 }
 
 .auth-brand {
-  margin: 0;
   text-align: center;
   font-size: 34px;
-  letter-spacing: -1.5px;
+  line-height: 1;
+  font-weight: 850;
+  letter-spacing: -1.8px;
+  color: var(--text);
 }
 
-.auth-brand span,
-.app-brand span {
+.auth-brand span {
   color: var(--accent2);
 }
 
 .auth-subtitle {
-  margin: 8px 0 28px;
   text-align: center;
   color: var(--muted);
+  font-size: 12px;
+  margin: 12px 0 32px;
 }
 
 .auth-field {
@@ -358,26 +366,44 @@ a.btn-sm {
 .auth-field label {
   display: block;
   color: #c7c9d1;
-  margin-bottom: 7px;
+  font-size: 11px;
+  font-weight: 650;
+  margin-bottom: 8px;
 }
 
 .auth-field input {
+  width: 100%;
   background: #0d0f14;
+  color: var(--text);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px 13px;
+  outline: none;
+  font-size: 13px;
+}
+
+.auth-field input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.13);
 }
 
 .auth-message {
   min-height: 16px;
   margin: 0 0 8px;
   color: #fca5a5;
-  font-size: 13px;
+  font-size: 11px;
 }
 
 .auth-submit {
   width: 100%;
-  padding: 13px 18px;
-  border-radius: 10px;
+  margin-top: 5px;
+  padding: 12px;
+  border: none;
+  border-radius: 8px;
   background: var(--accent);
-  font-weight: 700;
+  color: white;
+  font-weight: 650;
+  cursor: pointer;
 }
 
 .auth-submit:hover {
@@ -390,18 +416,22 @@ a.btn-sm {
 }
 
 .auth-switch {
-  margin: 24px 0 0;
+  margin-top: 24px;
   text-align: center;
   color: var(--muted);
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .auth-switch button {
-  padding: 0;
+  border: none;
+  background: transparent;
   color: var(--accent2);
-  font-weight: 700;
+  cursor: pointer;
+  font-weight: 650;
 }
 
 @media (max-width: 480px) {
-  .auth-card { padding: 30px 24px; }
+  .auth-card {
+    padding: 30px 24px;
+  }
 }
